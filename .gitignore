@@ -1,0 +1,6 @@
+# Visual Studio cache and local settings
+.vs/
+[Bb]in/
+[Ob]j/
+*.user
+*.suo

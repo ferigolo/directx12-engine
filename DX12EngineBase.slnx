@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="DX12EngineBase/DX12EngineBase.vcxproj" Id="64d6611d-01e2-49e6-ab59-0df81fb24c6a" />
+</Solution>

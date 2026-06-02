@@ -1,0 +1,8 @@
+﻿  DX12Context.cpp
+  main.cpp
+  Gerando Código...
+DX12Context.obj : error LNK2019: símbolo externo não resolvido, D3D12CreateDevice, referenciado na função "private: bool __cdecl DX12Context::CreateDevice(void)" (?CreateDevice@DX12Context@@AEAA_NXZ)
+DX12Context.obj : error LNK2019: símbolo externo não resolvido, D3D12GetDebugInterface, referenciado na função "private: bool __cdecl DX12Context::EnableDebugLayer(void)" (?EnableDebugLayer@DX12Context@@AEAA_NXZ)
+DX12Context.obj : error LNK2019: símbolo externo não resolvido, CreateDXGIFactory1, referenciado na função "private: bool __cdecl DX12Context::CreateDevice(void)" (?CreateDevice@DX12Context@@AEAA_NXZ)
+MSVCRTD.lib(exe_main.obj) : error LNK2019: símbolo externo não resolvido, main, referenciado na função "int __cdecl invoke_main(void)" (?invoke_main@@YAHXZ)
+C:\Users\ferig\source\repos\DX12EngineBase\x64\Debug\DX12EngineBase.exe : fatal error LNK1120: 4 externo não resolvidos
