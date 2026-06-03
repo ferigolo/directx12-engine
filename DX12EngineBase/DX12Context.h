@@ -28,6 +28,7 @@ private:
 	bool CreateRenderTargets();
 	bool CreateFence();
 	bool CreateFactory();
+	bool CreateConstantBuffer();
 	void MoveToNextFrame();
 
 	static const int                  bufferCount = 2; // Double buffering
@@ -39,6 +40,9 @@ private:
 	ComPtr<ID3D12Resource>            renderTargets[bufferCount];
 	ComPtr<ID3D12CommandAllocator>    commandAllocators[bufferCount];
 	ComPtr<ID3D12GraphicsCommandList> commandList;
+
+	ComPtr<ID3D12Resource> constantBuffer;
+	UINT8* cbvDataBegin = nullptr; // Holds the address the CPU will write to the GPU
 
 	// synchronization mechanisms
 	ComPtr<ID3D12Fence>              fence;

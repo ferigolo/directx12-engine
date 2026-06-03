@@ -1,8 +1,7 @@
-﻿  DX12Context.cpp
-  main.cpp
+﻿  Pipeline.cpp
   Gerando código
-  61 of 200 functions (30.5%) were compiled, the rest were copied from previous compilation.
-    1 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
+  4 of 204 functions ( 2.0%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    1 functions had inline decision re-evaluated but remain unchanged
   Finalizada a geração de código
   DX12EngineBase.vcxproj -> C:\Users\ferig\source\repos\DX12EngineBase\x64\Release\DX12EngineBase.exe

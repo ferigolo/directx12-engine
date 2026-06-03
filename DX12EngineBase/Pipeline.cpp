@@ -7,10 +7,12 @@ Pipeline::~Pipeline() {}
 
 bool Pipeline::CreateRootSignature(ID3D12Device* device)
 {
-	// Data interface that describes to the GPU which variables the Shaders will have to read
+	CD3DX12_ROOT_PARAMETER rootParameters[1]{};
+	rootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	// Data interface that describes to the GPU variables the Shaders will have to read
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 	rootSignatureDesc.Init(
-		0, nullptr, // Zero params
+		1, rootParameters,
 		0, nullptr, // Zero 'Static Samplers' (None sample configured)
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 	);

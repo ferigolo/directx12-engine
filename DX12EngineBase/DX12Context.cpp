@@ -26,11 +26,18 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	mesh = std::make_unique<Mesh>();
 	if (!mesh->Initialize(device.Get())) return false;
 
+	if (!CreateConstantBuffer()) return false;
+
 	return true;
 }
 
 void DX12Context::Render()
 {
+	static float time = 0;
+	time += 0.01f;
+	float currentOffset = sin(time) * 0.5f;
+	memcpy(cbvDataBegin, &currentOffset, sizeof(float)); // Copies the variable into VRAM
+
 	auto& commandAllocator = commandAllocators[frameIndex];
 	commandAllocator->Reset(); // Erases the content in the allocator memory
 	commandList->Reset(commandAllocator.Get(), nullptr);
@@ -60,7 +67,7 @@ void DX12Context::Render()
 
 	commandList->SetGraphicsRootSignature(pipeline->GetRootSignature());
 	commandList->SetPipelineState(pipeline->GetPipelineState());
-
+	commandList->SetGraphicsRootConstantBufferView(0, constantBuffer->GetGPUVirtualAddress());
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	auto vbv = mesh->GetVertexBufferView();
@@ -192,12 +199,27 @@ bool DX12Context::CreateFactory()
 	return true;
 }
 
+bool DX12Context::CreateConstantBuffer()
+{
+	const UINT constantBufferSize = (sizeof(float) + 255) & ~255;
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD); // Create a heap for uploading
+	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
+
+	if (FAILED(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&constantBuffer)))) return false;
+
+
+	// Everthing written into constant buffer shows immediatelly at the GPU
+	CD3DX12_RANGE readRange(0, 0);
+	constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&cbvDataBegin)); // It stays open
+	return true;
+}
+
 void DX12Context::MoveToNextFrame()
 {
 	const auto currentFanceValue = fenceValues[frameIndex];
 	commandQueue->Signal(fence.Get(), currentFanceValue);
 
-	frameIndex = swapChain->GetCurrentBackBufferIndex(); // gets which is the next buffer (which buffer is the backbuffer now)
+	frameIndex = swapChain->GetCurrentBackBufferIndex(); // gets which is the next buffer (which buffer is going to be the backbuffer)
 
 	if (fence->GetCompletedValue() < fenceValues[frameIndex])
 	{

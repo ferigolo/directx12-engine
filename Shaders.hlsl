@@ -12,12 +12,17 @@ struct PSInput
     float4 color : COLOR;
 };
 
+cbuffer TransformBuffer : register(b0)
+{
+    float xOffset; // Value the CPU will update to move the mesh in the X axis
+};
+
 
 PSInput VSMain(VSInput input)
 {
     PSInput result;
     
-    result.position = float4(input.position, 1.0f); // (X, Y, Z, W)
+    result.position = float4(input.position.x + xOffset, input.position.y, input.position.z, 1.0f); // (X, Y, Z, W)
     result.color = input.color;
     
     return result;
