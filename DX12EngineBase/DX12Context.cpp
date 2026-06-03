@@ -13,10 +13,18 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 #endif
 	if (!CreateDevice()) return false;
 	if (!CreateCommandQueue()) return false;
+	if (!CreateFactory()) return false;
 	if (!CreateSwapChain(hwnd, width, height)) return false;
 	if (!CreateDescriptorHeaps()) return false;
 	if (!CreateRenderTargets()) return false;
 	if (!CreateFence()) return false;
+
+	pipeline = std::make_unique<Pipeline>();
+	if (!pipeline->CreateRootSignature(device.Get())) return false;
+	if (!pipeline->CreatePipelineState(device.Get())) return false;
+
+	mesh = std::make_unique<Mesh>();
+	if (!mesh->Initialize(device.Get())) return false;
 
 	return true;
 }
@@ -24,27 +32,46 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 void DX12Context::Render()
 {
 	auto& commandAllocator = commandAllocators[frameIndex];
-	commandAllocator->Reset();
+	commandAllocator->Reset(); // Erases the content in the allocator memory
 	commandList->Reset(commandAllocator.Get(), nullptr);
 
-	auto barrierToRT = CD3DX12_RESOURCE_BARRIER::Transition(
-		renderTargets[frameIndex].Get(),
-		D3D12_RESOURCE_STATE_PRESENT,
-		D3D12_RESOURCE_STATE_RENDER_TARGET
-	);
-	commandList->ResourceBarrier(1, &barrierToRT);
+	auto barrierToRT = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to be the render target
+															renderTargets[frameIndex].Get(),
+															D3D12_RESOURCE_STATE_PRESENT,
+															D3D12_RESOURCE_STATE_RENDER_TARGET
+	); // Transition it from presenting to painting (render target)
+	commandList->ResourceBarrier(1, &barrierToRT); // Append the transition command
 
-	// Gets the pointer for the current buffer and cleans the screen
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart());
-	rtvHandle.ptr += frameIndex * rtvDescriptorSize;
+	// Gets the pointers for the buffers
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart()); // Pointer for the first item of buffers list
+	rtvHandle.ptr += frameIndex * rtvDescriptorSize; // Gets address of next buffer to render on
 
 	const float clearColor[] = { 0.08f, 0.12f, 0.18f, 1.0f };
-	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr); // Clear the next buffer
+	// Set the next buffer to be the render target
+	// Everything the shaders outputs goes in here
+	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition(
-		renderTargets[frameIndex].Get(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET,
-		D3D12_RESOURCE_STATE_PRESENT
+	// Set render area (full window)
+	D3D12_VIEWPORT viewport = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
+	D3D12_RECT scissorRect = { 0, 0, 1280, 720 };
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &scissorRect);
+
+	commandList->SetGraphicsRootSignature(pipeline->GetRootSignature());
+	commandList->SetPipelineState(pipeline->GetPipelineState());
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	auto vbv = mesh->GetVertexBufferView();
+	commandList->IASetVertexBuffers(0, 1, &vbv); // Slot 0, 1 buffer
+
+	commandList->DrawInstanced(3, 1, 0, 0);
+
+	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
+																 renderTargets[frameIndex].Get(),
+																 D3D12_RESOURCE_STATE_RENDER_TARGET,
+																 D3D12_RESOURCE_STATE_PRESENT
 	);
 	commandList->ResourceBarrier(1, &barrierToPresent);
 
@@ -82,8 +109,6 @@ bool DX12Context::EnableDebugLayer()
 
 bool DX12Context::CreateDevice() // represents the GPU in the code
 {                                // used to create everything else
-	ComPtr<IDXGIFactory4> factory;
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
 	// Creates the device pointing to the system main GPU
 	if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device)))) return false;
 	return true;
@@ -95,11 +120,11 @@ bool DX12Context::CreateCommandQueue()
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT; // Graphic, math and copy commands focused queue
 	// D3D12_COMMAND_LIST_TYPE_COMPUTE -> heavy math commands, compute shaders, simulations, AI
-	// D3D12_COMMAND_LIST_TYPE_COPY -> heavy data loading from RAM to VRAM throw PCIe
+	// D3D12_COMMAND_LIST_TYPE_COPY -> heavy data loading from RAM to VRAM through PCIe
 	if (FAILED(device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue)))) return false;
 
 	for (UINT i = 0; i < bufferCount; i++)
-		if (FAILED(device->CreateCommandAllocator(queueDesc.Type, IID_PPV_ARGS(&commandAllocators[i])))) return false; // Memory space to the command list write commands (writes into it)
+		if (FAILED(device->CreateCommandAllocator(queueDesc.Type, IID_PPV_ARGS(&commandAllocators[i])))) return false; // Memory space for command list to write commands
 
 	if (FAILED(device->CreateCommandList(0, queueDesc.Type, commandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&commandList)))) return false;
 
@@ -109,16 +134,14 @@ bool DX12Context::CreateCommandQueue()
 
 bool DX12Context::CreateSwapChain(HWND hwnd, int width, int height)
 {
-	ComPtr<IDXGIFactory4> factory;
-	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
-
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.BufferCount = bufferCount;
 	swapChainDesc.Width = width;
 	swapChainDesc.Height = height;
-	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // 32 bits, 8 for each channel
+	// UNORM->Unsined Normalized(color values between 0.0 and 1.0)
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Modelo de flip moderno
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Changes the buffer is pointing at and discard its content
 	swapChainDesc.SampleDesc.Count = 1;
 
 	ComPtr<IDXGISwapChain1> swapChain;
@@ -132,12 +155,12 @@ bool DX12Context::CreateSwapChain(HWND hwnd, int width, int height)
 bool DX12Context::CreateDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = 2;
+	rtvHeapDesc.NumDescriptors = bufferCount;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 	if (FAILED(device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap)))) return false;
-	rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV); // Size of the buffer in VRAM (we calculate the address of each buffer by frameIndex * rtvDescriptorSize)
 	return true;
 }
 
@@ -163,17 +186,23 @@ bool DX12Context::CreateFence()
 	return fenceEvent != nullptr;
 }
 
+bool DX12Context::CreateFactory()
+{
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
+	return true;
+}
+
 void DX12Context::MoveToNextFrame()
 {
 	const auto currentFanceValue = fenceValues[frameIndex];
 	commandQueue->Signal(fence.Get(), currentFanceValue);
 
-	frameIndex = swapChain->GetCurrentBackBufferIndex(); // gets which is the next frame (which buffer is the backbuffer now)
+	frameIndex = swapChain->GetCurrentBackBufferIndex(); // gets which is the next buffer (which buffer is the backbuffer now)
 
 	if (fence->GetCompletedValue() < fenceValues[frameIndex])
 	{
 		fence->SetEventOnCompletion(fenceValues[frameIndex], fenceEvent);
-		WaitForSingleObject(fenceEvent, INFINITE); // Waits for GPU to stop using the allocator the CPU wants to write
+		WaitForSingleObject(fenceEvent, INFINITE); // Waits for GPU stop using allocator CPU wants to write
 	}
 	fenceValues[frameIndex] = currentFanceValue + 1;
 }

@@ -1,6 +1,9 @@
 #pragma once
+#include "Mesh.h"
+#include "Pipeline.h"
 #include <d3dx12.h>
 #include <dxgi1_6.h>
+#include <memory>
 #include <windows.h>
 #include <wrl.h>
 
@@ -24,10 +27,12 @@ private:
 	bool CreateDescriptorHeaps();
 	bool CreateRenderTargets();
 	bool CreateFence();
+	bool CreateFactory();
 	void MoveToNextFrame();
 
 	static const int                  bufferCount = 2; // Double buffering
 	ComPtr<ID3D12Device>              device;
+	ComPtr<IDXGIFactory4>             factory;
 	ComPtr<ID3D12CommandQueue>        commandQueue;
 	ComPtr<IDXGISwapChain3>           swapChain;
 	ComPtr<ID3D12DescriptorHeap>      rtvHeap;
@@ -41,4 +46,7 @@ private:
 	HANDLE                           fenceEvent;
 	UINT                             frameIndex;
 	UINT                             rtvDescriptorSize;
+
+	std::unique_ptr<Pipeline> pipeline;
+	std::unique_ptr<Mesh>     mesh;
 };

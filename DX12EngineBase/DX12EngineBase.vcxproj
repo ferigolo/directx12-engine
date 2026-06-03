@@ -129,10 +129,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DX12Context.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Pipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DX12Context.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Pipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
