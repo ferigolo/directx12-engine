@@ -35,8 +35,15 @@ void DX12Context::Render()
 {
 	static float time = 0;
 	time += 0.01f;
-	float currentOffset = sin(time) * 0.5f;
-	memcpy(cbvDataBegin, &currentOffset, sizeof(float)); // Copies the variable into VRAM
+
+	ConstantBufferData cbd{};
+	cbd.offset.x = sin(time) * 0.5f;
+	cbd.offset.y = cos(time) * 0.5f;
+
+	float pulse = (sin(time * 2.0f) * 0.4f) + 0.6f; // fade in/out
+	cbd.colorMultiplier = { pulse, pulse, pulse, 1.0f };
+
+	memcpy(cbvDataBegin, &cbd, sizeof(ConstantBufferData)); // Copies the variable into VRAM
 
 	auto& commandAllocator = commandAllocators[frameIndex];
 	commandAllocator->Reset(); // Erases the content in the allocator memory
@@ -201,12 +208,11 @@ bool DX12Context::CreateFactory()
 
 bool DX12Context::CreateConstantBuffer()
 {
-	const UINT constantBufferSize = (sizeof(float) + 255) & ~255;
+	const UINT constantBufferSize = (sizeof(ConstantBufferData) + 255) & ~255;
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD); // Create a heap for uploading
 	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
 
 	if (FAILED(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&constantBuffer)))) return false;
-
 
 	// Everthing written into constant buffer shows immediatelly at the GPU
 	CD3DX12_RANGE readRange(0, 0);

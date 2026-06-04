@@ -14,7 +14,9 @@ struct PSInput
 
 cbuffer TransformBuffer : register(b0)
 {
-    float xOffset; // Value the CPU will update to move the mesh in the X axis
+    float2 offset; // 8 bytes (2 floats)
+    float2 padding; // 8 bytes
+    float4 colorMultiplier;
 };
 
 
@@ -22,8 +24,8 @@ PSInput VSMain(VSInput input)
 {
     PSInput result;
     
-    result.position = float4(input.position.x + xOffset, input.position.y, input.position.z, 1.0f); // (X, Y, Z, W)
-    result.color = input.color;
+    result.position = float4(input.position.x + offset.x, input.position.y + offset.y, input.position.z, 1.0f); // (X, Y, Z, W)
+    result.color = input.color * colorMultiplier;
     
     return result;
 }

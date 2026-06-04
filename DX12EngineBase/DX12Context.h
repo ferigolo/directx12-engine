@@ -2,6 +2,7 @@
 #include "Mesh.h"
 #include "Pipeline.h"
 #include <d3dx12.h>
+#include <DirectXMath.h>
 #include <dxgi1_6.h>
 #include <memory>
 #include <windows.h>
@@ -53,4 +54,11 @@ private:
 
 	std::unique_ptr<Pipeline> pipeline;
 	std::unique_ptr<Mesh>     mesh;
+};
+
+struct ConstantBufferData
+{
+	DirectX::XMFLOAT2 offset;          // 8 bytes
+	DirectX::XMFLOAT2 padding;         // 8 bytes (Used for alignment)
+	DirectX::XMFLOAT4 colorMultiplier; // 16 bytes
 };
