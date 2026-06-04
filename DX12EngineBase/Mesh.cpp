@@ -9,7 +9,8 @@ Mesh::~Mesh()
 
 bool Mesh::Initialize(ID3D12Device* device, Vertex* vertices, UINT vertexCount, uint16_t* indexes, UINT indexCount)
 {
-	const auto vertexBufferSize = vertexCount * sizeof(Vertex);
+	this->indexCount = indexCount;
+	const UINT vertexBufferSize = vertexCount * sizeof(Vertex);
 
 	// Buffer properties
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD); // CPU needs to write data from RAM to VRAM
@@ -41,14 +42,14 @@ bool Mesh::Initialize(ID3D12Device* device, Vertex* vertices, UINT vertexCount, 
 	vertexBufferView.SizeInBytes = vertexBufferSize;
 
 	// Index buffer
-	const auto indexBufferSize = indexCount * sizeof(uint16_t);
+	const UINT indexBufferSize = indexCount * sizeof(uint16_t);
 	auto ibDesc = CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize);
 
 	device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &ibDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&indexBuffer));
 
 	UINT8* pIndexDataBegin = nullptr; // Points to address which starts the index buffer
 	indexBuffer->Map(0, &readRange, (void**)&pIndexDataBegin);
-	memcpy(pIndexDataBegin, indexes, sizeof(indexes));
+	memcpy(pIndexDataBegin, indexes, indexBufferSize);
 	indexBuffer->Unmap(0, nullptr);
 
 	// Describes the index buffer to GPU

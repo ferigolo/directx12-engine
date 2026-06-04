@@ -1,9 +1,9 @@
 ﻿  DX12Context.cpp
-C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(40,27): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
-C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(41,27): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
-C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(43,14): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
+C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(48,27): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(49,27): warning C4244: '=': conversão de 'double' para 'float', possível perda de dados
+C:\Users\ferig\source\repos\DX12EngineBase\DX12EngineBase\DX12Context.cpp(51,14): warning C4244: 'inicializando': conversão de 'double' para 'float', possível perda de dados
   Gerando código
-  1 of 204 functions ( 0.5%) were compiled, the rest were copied from previous compilation.
+  4 of 365 functions ( 1.1%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
     1 functions had inline decision re-evaluated but remain unchanged
   Finalizada a geração de código

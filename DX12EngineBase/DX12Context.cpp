@@ -1,4 +1,5 @@
 #include "DX12Context.h"
+#include "GeometryGenerator.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -18,15 +19,22 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!CreateDescriptorHeaps()) return false;
 	if (!CreateRenderTargets()) return false;
 	if (!CreateFence()) return false;
+	if (!CreateConstantBuffer()) return false;
 
 	pipeline = std::make_unique<Pipeline>();
 	if (!pipeline->CreateRootSignature(device.Get())) return false;
 	if (!pipeline->CreatePipelineState(device.Get())) return false;
 
-	mesh = std::make_unique<Mesh>();
-	if (!mesh->Initialize(device.Get())) return false;
+	MeshData mData = GeometryGenerator::CreateCube();
 
-	if (!CreateConstantBuffer()) return false;
+	mesh = std::make_unique<Mesh>();
+	if (!mesh->Initialize(
+		device.Get(),
+		mData.Vertices.data(),
+		static_cast<UINT>(mData.Vertices.size()),
+		mData.Indexes.data(),
+		static_cast<UINT>(mData.Indexes.size())
+	)) return false;
 
 	return true;
 }
@@ -80,7 +88,10 @@ void DX12Context::Render()
 	auto vbv = mesh->GetVertexBufferView();
 	commandList->IASetVertexBuffers(0, 1, &vbv); // Slot 0, 1 buffer
 
-	commandList->DrawInstanced(3, 1, 0, 0);
+	auto ibv = mesh->GetIndexBufferView();
+	commandList->IASetIndexBuffer(&ibv);
+
+	commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
 
 	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
 																 renderTargets[frameIndex].Get(),
