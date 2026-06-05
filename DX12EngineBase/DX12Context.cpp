@@ -24,14 +24,23 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!pipeline->CreateRootSignature(device.Get())) return false;
 	if (!pipeline->CreatePipelineState(device.Get())) return false;
 
-	// Load meshs into GPU
+	commandAllocators[0]->Reset();
+	commandList->Reset(commandAllocators[0].Get(), pipeline->GetPipelineState());
+
+	// Load meshes into GPU
 	MeshData cubeData = GeometryGenerator::CreateCube();
 	cubeMesh = std::make_unique<Mesh>();
-	if (!cubeMesh->Initialize(device.Get(), cubeData.Vertices.data(), static_cast<UINT>(cubeData.Vertices.size()), cubeData.Indexes.data(), static_cast<UINT>(cubeData.Indexes.size()))) return false;
+	if (!cubeMesh->Initialize(device.Get(), commandList.Get(), cubeData.Vertices.data(), static_cast<UINT>(cubeData.Vertices.size()), cubeData.Indexes.data(), static_cast<UINT>(cubeData.Indexes.size()))) return false;
 
 	MeshData triangleData = GeometryGenerator::CreateTriangle();
 	triangleMesh = std::make_unique<Mesh>();
-	if (!triangleMesh->Initialize(device.Get(), triangleData.Vertices.data(), static_cast<UINT>(triangleData.Vertices.size()), triangleData.Indexes.data(), static_cast<UINT>(triangleData.Indexes.size()))) return false;
+	if (!triangleMesh->Initialize(device.Get(), commandList.Get(), triangleData.Vertices.data(), static_cast<UINT>(triangleData.Vertices.size()), triangleData.Indexes.data(), static_cast<UINT>(triangleData.Indexes.size()))) return false;
+
+	commandList->Close();
+	ID3D12CommandList* cmdsLists[] = { commandList.Get() };
+	commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+	IncrementFenceAndWaitsForGpu();
 
 	// Create world
 	// Cube at the center
@@ -239,12 +248,23 @@ void DX12Context::MoveToNextFrame()
 	const auto currentFanceValue = fenceValues[frameIndex];
 	commandQueue->Signal(fence.Get(), currentFanceValue);
 
-	frameIndex = swapChain->GetCurrentBackBufferIndex(); // gets which is the next buffer (which buffer is going to be the backbuffer)
+	frameIndex = swapChain->GetCurrentBackBufferIndex(); // Gets next frame buffer
 
 	if (fence->GetCompletedValue() < fenceValues[frameIndex])
 	{
 		fence->SetEventOnCompletion(fenceValues[frameIndex], fenceEvent);
-		WaitForSingleObject(fenceEvent, INFINITE); // Waits for GPU stop using allocator CPU wants to write
+		WaitForSingleObject(fenceEvent, INFINITE); // Waits for GPU stop using allocator the CPU wants to write
 	}
 	fenceValues[frameIndex] = currentFanceValue + 1;
+}
+
+inline void DX12Context::IncrementFenceAndWaitsForGpu()
+{
+	fenceValues[frameIndex]++;
+	commandQueue->Signal(fence.Get(), fenceValues[frameIndex]);
+	if (fence->GetCompletedValue() < fenceValues[frameIndex])
+	{
+		fence->SetEventOnCompletion(fenceValues[frameIndex], fenceEvent);
+		WaitForSingleObject(fenceEvent, INFINITE);
+	}
 }

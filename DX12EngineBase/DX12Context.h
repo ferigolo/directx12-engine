@@ -5,9 +5,6 @@
 #include <d3dx12.h>
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
-#include <memory>
-#include <windows.h>
-#include <wrl.h>
 
 using Microsoft::WRL::ComPtr;
 
@@ -31,6 +28,7 @@ private:
 	bool CreateFence();
 	bool CreateFactory();
 	void MoveToNextFrame();
+	inline void IncrementFenceAndWaitsForGpu();
 
 	static const int                  bufferCount = 2; // Double buffering
 	ComPtr<ID3D12Device>              device;
