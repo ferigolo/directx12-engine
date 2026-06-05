@@ -1,5 +1,6 @@
 #pragma once
 #include "Mesh.h"
+#include <DirectXColors.h>
 #include <vector>
 
 struct MeshData

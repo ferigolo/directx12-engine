@@ -1,4 +1,4 @@
-// Waht comes in (comes from the Vertex Shader)
+// What comes in (comes from the Vertex Shader)
 struct VSInput
 {
     float3 position : POSITION;
@@ -12,20 +12,18 @@ struct PSInput
     float4 color : COLOR;
 };
 
-cbuffer TransformBuffer : register(b0)
+cbuffer EntiryConstants : register(b0)
 {
-    float2 offset; // 8 bytes (2 floats)
-    float2 padding; // 8 bytes
-    float4 colorMultiplier;
+    float4x4 wvp; // WVP = World * View * Projection
 };
 
-
+// Vertex Shader -> Runs for every vertex
 PSInput VSMain(VSInput input)
 {
     PSInput result;
     
-    result.position = float4(input.position.x + offset.x, input.position.y + offset.y, input.position.z, 1.0f); // (X, Y, Z, W)
-    result.color = input.color * colorMultiplier;
+    result.position = mul(float4(input.position, 1.0f), wvp); // (X, Y, Z, W) * WVP
+    result.color = input.color;
     
     return result;
 }

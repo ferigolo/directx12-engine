@@ -129,12 +129,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="DX12Context.h" />
+    <ClInclude Include="Entity.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Pipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DX12Context.cpp" />
+    <ClCompile Include="Entity.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />

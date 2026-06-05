@@ -12,13 +12,20 @@ Entity::~Entity()
 bool Entity::Initialize(ID3D12Device* device, Mesh* targetMesh)
 {
 	this->mesh = targetMesh;
-
 	// Creates the constant buffer for each object
 	const UINT cbSize = (sizeof(EntityConstants) + 255) & ~255;
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(cbSize);
 
-	if (FAILED(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&constantBuffer)))) return false;
+	// 2. Agora sim, podes passar o '&' em segurança!
+	if (FAILED(device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&constantBuffer)
+	))) return false;
 
 	// Keeps the pointer open for writing the matriz every frame
 	CD3DX12_RANGE readRange(0, 0);

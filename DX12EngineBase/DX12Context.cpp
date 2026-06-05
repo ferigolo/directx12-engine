@@ -19,22 +19,38 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!CreateDescriptorHeaps()) return false;
 	if (!CreateRenderTargets()) return false;
 	if (!CreateFence()) return false;
-	if (!CreateConstantBuffer()) return false;
 
 	pipeline = std::make_unique<Pipeline>();
 	if (!pipeline->CreateRootSignature(device.Get())) return false;
 	if (!pipeline->CreatePipelineState(device.Get())) return false;
 
-	MeshData mData = GeometryGenerator::CreateTriangle();
+	// Load meshs into GPU
+	MeshData cubeData = GeometryGenerator::CreateCube();
+	cubeMesh = std::make_unique<Mesh>();
+	if (!cubeMesh->Initialize(device.Get(), cubeData.Vertices.data(), static_cast<UINT>(cubeData.Vertices.size()), cubeData.Indexes.data(), static_cast<UINT>(cubeData.Indexes.size()))) return false;
 
-	mesh = std::make_unique<Mesh>();
-	if (!mesh->Initialize(
-		device.Get(),
-		mData.Vertices.data(),
-		static_cast<UINT>(mData.Vertices.size()),
-		mData.Indexes.data(),
-		static_cast<UINT>(mData.Indexes.size())
-	)) return false;
+	MeshData triangleData = GeometryGenerator::CreateTriangle();
+	triangleMesh = std::make_unique<Mesh>();
+	if (!triangleMesh->Initialize(device.Get(), triangleData.Vertices.data(), static_cast<UINT>(triangleData.Vertices.size()), triangleData.Indexes.data(), static_cast<UINT>(triangleData.Indexes.size()))) return false;
+
+	// Create world
+	// Cube at the center
+	auto cubeObj = std::make_unique<Entity>();
+	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
+	cubeObj->SetPosition(0.0f, 0.0f, 0.0f);
+	sceneObjects.push_back(std::move(cubeObj));
+
+	// Triangle to the left
+	auto triangle1 = std::make_unique<Entity>();
+	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
+	triangle1->SetPosition(-1.0f, 0.0f, 0.0f);
+	sceneObjects.push_back(std::move(triangle1));
+
+	// Triangle to the right
+	auto triangle2 = std::make_unique<Entity>();
+	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
+	triangle2->SetPosition(1.0f, 0.5f, 1.5f);
+	sceneObjects.push_back(std::move(triangle2));
 
 	return true;
 }
@@ -44,14 +60,11 @@ void DX12Context::Render()
 	static float time = 0;
 	time += 0.01f;
 
-	ConstantBufferData cbd{};
-	cbd.offset.x = sin(time) * 0.5f;
-	cbd.offset.y = cos(time) * 0.5f;
-
-	float pulse = (sin(time * 2.0f) * 0.4f) + 0.6f; // fade in/out
-	cbd.colorMultiplier = { pulse, pulse, pulse, 1.0f };
-
-	memcpy(cbvDataBegin, &cbd, sizeof(ConstantBufferData)); // Copies the variable into VRAM
+	for (auto& obj : sceneObjects)
+	{
+		obj->Update(viewProjectionMatrix);
+		obj->SetRotation(time, time, time * 0.5f);
+	}
 
 	auto& commandAllocator = commandAllocators[frameIndex];
 	commandAllocator->Reset(); // Erases the content in the allocator memory
@@ -68,7 +81,7 @@ void DX12Context::Render()
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart()); // Pointer for the first item of buffers list
 	rtvHandle.ptr += frameIndex * rtvDescriptorSize; // Gets address of next buffer to render on
 
-	const float clearColor[] = { 0.08f, 0.12f, 0.18f, 1.0f };
+	const FLOAT clearColor[] = { 0.0f, 0.0f, 0.15f, 0.0f };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr); // Clear the next buffer
 	// Set the next buffer to be the render target
 	// Everything the shaders outputs goes in here
@@ -82,16 +95,20 @@ void DX12Context::Render()
 
 	commandList->SetGraphicsRootSignature(pipeline->GetRootSignature());
 	commandList->SetPipelineState(pipeline->GetPipelineState());
-	commandList->SetGraphicsRootConstantBufferView(0, constantBuffer->GetGPUVirtualAddress());
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	auto vbv = mesh->GetVertexBufferView();
-	commandList->IASetVertexBuffers(0, 1, &vbv); // Slot 0, 1 buffer
+	for (auto& obj : sceneObjects)
+	{
+		commandList->SetGraphicsRootConstantBufferView(0, obj->GetConstantBufferAddress());
 
-	auto ibv = mesh->GetIndexBufferView();
-	commandList->IASetIndexBuffer(&ibv);
+		D3D12_VERTEX_BUFFER_VIEW vbv = obj->GetMesh()->GetVertexBufferView();
+		commandList->IASetVertexBuffers(0, 1, &vbv);
 
-	commandList->DrawIndexedInstanced(mesh->GetIndexCount(), 1, 0, 0, 0);
+		D3D12_INDEX_BUFFER_VIEW ibv = obj->GetMesh()->GetIndexBufferView();
+		commandList->IASetIndexBuffer(&ibv);
+
+		commandList->DrawIndexedInstanced(obj->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
+	}
 
 	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
 																 renderTargets[frameIndex].Get(),
@@ -214,20 +231,6 @@ bool DX12Context::CreateFence()
 bool DX12Context::CreateFactory()
 {
 	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
-	return true;
-}
-
-bool DX12Context::CreateConstantBuffer()
-{
-	const UINT constantBufferSize = (sizeof(ConstantBufferData) + 255) & ~255;
-	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD); // Create a heap for uploading
-	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(constantBufferSize);
-
-	if (FAILED(device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&constantBuffer)))) return false;
-
-	// Everthing written into constant buffer shows immediatelly at the GPU
-	CD3DX12_RANGE readRange(0, 0);
-	constantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&cbvDataBegin)); // It stays open
 	return true;
 }
 

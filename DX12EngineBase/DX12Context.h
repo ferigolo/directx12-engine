@@ -1,4 +1,5 @@
 #pragma once
+#include "Entity.h"
 #include "Mesh.h"
 #include "Pipeline.h"
 #include <d3dx12.h>
@@ -29,7 +30,6 @@ private:
 	bool CreateRenderTargets();
 	bool CreateFence();
 	bool CreateFactory();
-	bool CreateConstantBuffer();
 	void MoveToNextFrame();
 
 	static const int                  bufferCount = 2; // Double buffering
@@ -42,9 +42,6 @@ private:
 	ComPtr<ID3D12CommandAllocator>    commandAllocators[bufferCount];
 	ComPtr<ID3D12GraphicsCommandList> commandList;
 
-	ComPtr<ID3D12Resource> constantBuffer;
-	UINT8* cbvDataBegin = nullptr; // Holds the address the CPU will write to the GPU
-
 	// synchronization mechanisms
 	ComPtr<ID3D12Fence>              fence;
 	UINT64                           fenceValues[bufferCount] = { 1 };
@@ -53,12 +50,17 @@ private:
 	UINT                             rtvDescriptorSize;
 
 	std::unique_ptr<Pipeline> pipeline;
-	std::unique_ptr<Mesh>     mesh;
-};
+	std::unique_ptr<Mesh> cubeMesh;
+	std::unique_ptr<Mesh> triangleMesh;
 
-struct ConstantBufferData
-{
-	DirectX::XMFLOAT2 offset;          // 8 bytes
-	DirectX::XMFLOAT2 padding;         // 8 bytes (Used for alignment)
-	DirectX::XMFLOAT4 colorMultiplier; // 16 bytes
+	std::vector<std::unique_ptr<Entity>> sceneObjects;
+
+	// View and projection
+	const XMVECTOR eyePosition = XMVectorSet(0.0f, 1.0f, -3.0f, 1.0f); // Camera a little higher and back
+	const XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	const XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	const XMMATRIX viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+	const XMMATRIX projectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
+	const XMMATRIX viewProjectionMatrix = viewMatrix * projectionMatrix;
 };
