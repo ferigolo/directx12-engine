@@ -4,7 +4,6 @@ MeshData GeometryGenerator::CreateCube()
 {
 	MeshData meshData;
 
-	// 1. Os 8 cantos do cubo (usando std::vector)
 	meshData.Vertices = {
 		{ { -0.25f,  0.25f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
 		{ {  0.25f,  0.25f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },

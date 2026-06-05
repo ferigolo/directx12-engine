@@ -25,7 +25,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!pipeline->CreateRootSignature(device.Get())) return false;
 	if (!pipeline->CreatePipelineState(device.Get())) return false;
 
-	MeshData mData = GeometryGenerator::CreateCube();
+	MeshData mData = GeometryGenerator::CreateTriangle();
 
 	mesh = std::make_unique<Mesh>();
 	if (!mesh->Initialize(
