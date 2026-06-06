@@ -69,7 +69,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 
 	this->gridObj = std::make_unique<Entity>();
 	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
-	gridObj->SetPosition(0.0f, -1.0f, -2.0f);
+	gridObj->SetPosition(0.0f, -1.0f, 0.0f);
 	gridObj->Update(viewProjectionMatrix);
 
 	return true;
@@ -264,24 +264,29 @@ bool DX12Context::CreateDepthStencil()
 	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT; // 32-bits for high depth precision
 	depthStencilDesc.SampleDesc.Count = 1;
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // Explicity tells the GPU to write depth data 
 
 	D3D12_CLEAR_VALUE optClear = {};
 	optClear.Format = DXGI_FORMAT_D32_FLOAT;
 	optClear.DepthStencil.Depth = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 
-	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	if (FAILED(device->CreateCommittedResource(
-		&heapProps,
-		D3D12_HEAP_FLAG_NONE,
-		&depthStencilDesc,
-		D3D12_RESOURCE_STATE_DEPTH_WRITE,
-		&optClear,
-		IID_PPV_ARGS(&depthStencilBuffer)
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT); // Pure VRAM (CPU will not write here)
+	if (FAILED(device->CreateCommittedResource( // Allocates memory for depthStencilBuffer
+											   &heapProps,
+											   D3D12_HEAP_FLAG_NONE,
+											   &depthStencilDesc,
+											   D3D12_RESOURCE_STATE_DEPTH_WRITE,
+											   &optClear,
+											   IID_PPV_ARGS(&depthStencilBuffer)
 	))) return false;
 
 	device->CreateDepthStencilView(depthStencilBuffer.Get(), nullptr, dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// The CPU allocates a block of raw bytes in VRAM(Resource).
+	//	The CPU allocates a contiguous array of memory reserved for storing metadata(Descriptor Heap).
+	//	The CPU invokes a View function to generate the physical structure of the access metadata (the Descriptor) and writes this structure to a predetermined index within the Heap.
+	//	CommandList commands pass the memory offset from the Heap to the GPU, instructing the graphics processor cores to read the correct descriptor before operating on the raw resource.
 
 	return true;
 }
