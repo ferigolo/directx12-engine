@@ -53,37 +53,31 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	auto cubeObj = std::make_unique<Entity>();
 	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
 	cubeObj->SetPosition(0.0f, 1.0f, -1.0f);
-	sceneObjects.push_back(std::move(cubeObj));
+	mainScene.AddObject(std::move(cubeObj));
 
 	// Triangle to the left
 	auto triangle1 = std::make_unique<Entity>();
 	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
 	triangle1->SetPosition(-0.5f, 1.0f, -1.5f);
-	sceneObjects.push_back(std::move(triangle1));
+	mainScene.AddObject(std::move(triangle1));
 
 	// Triangle to the right
 	auto triangle2 = std::make_unique<Entity>();
 	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
 	triangle2->SetPosition(1.0f, 1.5f, 1.5f);
-	sceneObjects.push_back(std::move(triangle2));
+	mainScene.AddObject(std::move(triangle2));
 
-	this->gridObj = std::make_unique<Entity>();
+	auto gridObj = std::make_unique<Entity>();
 	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
 	gridObj->SetPosition(0.0f, -1.0f, 0.0f);
-	gridObj->Update(viewProjectionMatrix);
+	mainScene.SetGrid(std::move(gridObj));
 
 	return true;
 }
 
 void DX12Context::Render()
 {
-	float rotationTimer = UpdateTimer();
-
-	for (auto& obj : sceneObjects)
-	{
-		obj->Update(viewProjectionMatrix);
-		obj->SetRotation(rotationTimer, rotationTimer, rotationTimer * 0.5f);
-	}
+	mainScene.Update(UpdateTimer());
 
 	auto& commandAllocator = commandAllocators[frameIndex];
 	commandAllocator->Reset(); // Erases the content in the allocator memory
@@ -119,8 +113,8 @@ void DX12Context::Render()
 	commandList->SetPipelineState(pipeline->GetPipelineState());
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	for (auto& obj : sceneObjects) SetBuffersAndDrawIndexedInstanced(obj);
-	SetBuffersAndDrawIndexedInstanced(gridObj);
+	for (auto& obj : mainScene.GetObjects()) SetBuffersAndDrawIndexedInstanced(obj.get());
+	if (mainScene.GetGrid()) SetBuffersAndDrawIndexedInstanced(mainScene.GetGrid());
 
 	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
 																 renderTargets[frameIndex].Get(),
@@ -319,21 +313,17 @@ inline void DX12Context::IncrementFenceAndWaitsForGpu()
 
 float DX12Context::UpdateTimer()
 {
-	using namespace std::chrono;
+	using namespace chrono;
 	static auto prevTime = high_resolution_clock::now();
 	auto currentTime = high_resolution_clock::now();
 
 	float deltaTime = duration<float>(currentTime - prevTime).count(); // How many seconds has passed since last frame
 	prevTime = currentTime;
 
-	static float rotationTimer = 0;
-	static const float rotationSpeed = 1;
-	rotationTimer += rotationSpeed * deltaTime;
-
-	return rotationTimer;
+	return deltaTime;
 }
 
-void DX12Context::SetBuffersAndDrawIndexedInstanced(std::unique_ptr<Entity>& obj)
+void DX12Context::SetBuffersAndDrawIndexedInstanced(Entity* obj)
 {
 	commandList->SetGraphicsRootConstantBufferView(0, obj->GetConstantBufferAddress());
 

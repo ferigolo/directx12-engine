@@ -2,6 +2,7 @@
 #include "Entity.h"
 #include "Mesh.h"
 #include "Pipeline.h"
+#include "Scene.h"
 #include <chrono>
 #include <d3dx12.h>
 #include <DirectXMath.h>
@@ -32,7 +33,7 @@ private:
 	void MoveToNextFrame();
 	inline void IncrementFenceAndWaitsForGpu();
 	static float UpdateTimer();
-	void SetBuffersAndDrawIndexedInstanced(std::unique_ptr<Entity>& obj);
+	void SetBuffersAndDrawIndexedInstanced(Entity* obj);
 
 	static const int                  bufferCount = 2; // Double buffering
 	ComPtr<ID3D12Device>              device;
@@ -57,16 +58,6 @@ private:
 	std::unique_ptr<Mesh> cubeMesh;
 	std::unique_ptr<Mesh> triangleMesh;
 	std::unique_ptr<Mesh> gridMesh;
-	std::unique_ptr<Entity> gridObj;
 
-	std::vector<std::unique_ptr<Entity>> sceneObjects;
-
-	// View and projection
-	const XMVECTOR eyePosition = XMVectorSet(0.0f, 1.0f, -3.0f, 1.0f); // Camera a little higher and back
-	const XMVECTOR focusPoint = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f); // Look a little higher
-	const XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	const XMMATRIX viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
-
-	const XMMATRIX projectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
-	const XMMATRIX viewProjectionMatrix = viewMatrix * projectionMatrix;
+	Scene mainScene;
 };
