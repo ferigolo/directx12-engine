@@ -15,7 +15,7 @@ public:
 	void AddObject(unique_ptr<Entity> obj) { sceneObjects.push_back(move(obj)); };
 	void SetGrid(unique_ptr<Entity> grid) { gridObj = move(grid); };
 
-	void Update(float deltaTime);
+	void Update(float deltaTime, int clientWidth, int clientHeight);
 
 	vector<unique_ptr<Entity>>& GetObjects() { return sceneObjects; }
 	Entity* GetGrid() { return gridObj.get(); }

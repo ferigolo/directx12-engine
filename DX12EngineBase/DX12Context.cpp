@@ -12,10 +12,13 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 #if defined(_DEBUG)
 	EnableDebugLayer(); // Ativa avisos detalhados de erro da GPU no console do VS
 #endif
+	clientWidth = width;
+	clientHeight = height;
+
 	if (!CreateDevice()) return false;
 	if (!CreateCommandQueue()) return false;
 	if (!CreateFactory()) return false;
-	if (!CreateSwapChain(hwnd, width, height)) return false;
+	if (!CreateSwapChain(hwnd)) return false;
 	if (!CreateDescriptorHeaps()) return false;
 	if (!CreateRenderTargets()) return false;
 	if (!CreateDepthStencil()) return false;
@@ -52,19 +55,19 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	// Cube at the center
 	auto cubeObj = std::make_unique<Entity>();
 	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
-	cubeObj->SetPosition(0.0f, 1.0f, -1.0f);
+	cubeObj->SetPosition(0.0f, 1.0f, -0.5f);
 	mainScene.AddObject(std::move(cubeObj));
 
 	// Triangle to the left
 	auto triangle1 = std::make_unique<Entity>();
 	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle1->SetPosition(-0.5f, 1.0f, -1.5f);
+	triangle1->SetPosition(-0.5f, 0.5f, -1.0f);
 	mainScene.AddObject(std::move(triangle1));
 
 	// Triangle to the right
 	auto triangle2 = std::make_unique<Entity>();
 	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle2->SetPosition(1.0f, 1.5f, 1.5f);
+	triangle2->SetPosition(1.0f, 0.0f, 0.0f);
 	mainScene.AddObject(std::move(triangle2));
 
 	auto gridObj = std::make_unique<Entity>();
@@ -77,7 +80,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 
 void DX12Context::Render()
 {
-	mainScene.Update(UpdateTimer());
+	mainScene.Update(UpdateTimer(), clientWidth, clientHeight);
 
 	auto& commandAllocator = commandAllocators[frameIndex];
 	commandAllocator->Reset(); // Erases the content in the allocator memory
@@ -104,8 +107,8 @@ void DX12Context::Render()
 	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	// Set render area (full window)
-	D3D12_VIEWPORT viewport = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
-	D3D12_RECT scissorRect = { 0, 0, 1280, 720 };
+	D3D12_VIEWPORT viewport = { 0.0f, 0.0f, clientWidth, clientHeight, 0.0f, 1.0f };
+	D3D12_RECT scissorRect = { 0, 0, clientWidth, clientHeight };
 	commandList->RSSetViewports(1, &viewport);
 	commandList->RSSetScissorRects(1, &scissorRect);
 
@@ -180,12 +183,12 @@ bool DX12Context::CreateCommandQueue()
 	return true;
 }
 
-bool DX12Context::CreateSwapChain(HWND hwnd, int width, int height)
+bool DX12Context::CreateSwapChain(HWND hwnd)
 {
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.BufferCount = bufferCount;
-	swapChainDesc.Width = width;
-	swapChainDesc.Height = height;
+	swapChainDesc.Width = clientWidth;
+	swapChainDesc.Height = clientHeight;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // 32 bits, 8 for each channel
 	// UNORM->Unsined Normalized(color values between 0.0 and 1.0)
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -251,8 +254,8 @@ bool DX12Context::CreateDepthStencil()
 	D3D12_RESOURCE_DESC depthStencilDesc = {};
 	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	depthStencilDesc.Alignment = 0;
-	depthStencilDesc.Width = 1280;
-	depthStencilDesc.Height = 720;
+	depthStencilDesc.Width = clientWidth;
+	depthStencilDesc.Height = clientHeight;
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT; // 32-bits for high depth precision
@@ -334,4 +337,30 @@ void DX12Context::SetBuffersAndDrawIndexedInstanced(Entity* obj)
 	commandList->IASetIndexBuffer(&ibv);
 
 	commandList->DrawIndexedInstanced(obj->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
+}
+
+void DX12Context::OnResize(int newWidth, int newHeight)
+{
+	if (device == nullptr || swapChain == nullptr || commandAllocators[0] == nullptr) return;
+
+	clientWidth = newWidth;
+	clientHeight = newHeight;
+
+	IncrementFenceAndWaitsForGpu(); // CPU need to wait for GPU to finish the current frame
+
+	// Clear buffers
+	for (int i = 0; i < bufferCount; i++) renderTargets[i].Reset();
+	depthStencilBuffer.Reset();
+
+	if (FAILED(swapChain->ResizeBuffers(
+		bufferCount,
+		clientWidth,
+		clientHeight,
+		DXGI_FORMAT_R8G8B8A8_UNORM,
+		0))) return;
+
+	frameIndex = swapChain->GetCurrentBackBufferIndex();
+
+	CreateRenderTargets();
+	CreateDepthStencil();
 }

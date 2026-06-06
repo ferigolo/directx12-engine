@@ -9,7 +9,7 @@ Scene::Scene()
 Scene::~Scene()
 {}
 
-void Scene::Update(float deltaTime)
+void Scene::Update(float deltaTime, int clientWidth, int clientHeight)
 {
 	float moveSpeed = 5.0f * deltaTime;
 	float rotSpeed = 2.0f * deltaTime;
@@ -24,7 +24,9 @@ void Scene::Update(float deltaTime)
 	if (Input::IsKeyDown(VK_RIGHT)) camera.Rotate(0.0f, rotSpeed);
 	if (Input::IsKeyDown(VK_LEFT))  camera.Rotate(0.0f, -rotSpeed);
 
-	XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix(45.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
+	float aspectRatio = (clientHeight == 0) ? 1.0f : (float)(clientWidth) / (float)(clientHeight);
+
+	XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix(45.0f, aspectRatio, 0.1f, 100.0f);
 
 	static float rotationTimer = 0;
 	rotationTimer += 1 * deltaTime; // Speed of rotation

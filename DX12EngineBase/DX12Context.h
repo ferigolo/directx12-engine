@@ -17,6 +17,7 @@ public:
 	~DX12Context();
 
 	bool Initialize(HWND hwnd, int width, int height);
+	void OnResize(int newWidth, int newHeight);
 	void Render();
 	void Shutdown();
 
@@ -24,7 +25,7 @@ private:
 	bool EnableDebugLayer();
 	bool CreateDevice();
 	bool CreateCommandQueue();
-	bool CreateSwapChain(HWND hwnd, int width, int height);
+	bool CreateSwapChain(HWND hwnd);
 	bool CreateDescriptorHeaps();
 	bool CreateRenderTargets();
 	bool CreateFence();
@@ -47,12 +48,15 @@ private:
 	ComPtr<ID3D12DescriptorHeap>      dsvHeap; // Depth Stencil View Heap
 	ComPtr<ID3D12Resource>            depthStencilBuffer; // Depth texture
 
-	// synchronization mechanisms
+	// Synchronization mechanisms
 	ComPtr<ID3D12Fence>              fence;
 	UINT64                           fenceValues[bufferCount] = { 1 };
 	HANDLE                           fenceEvent;
 	UINT                             frameIndex;
 	UINT                             rtvDescriptorSize;
+
+	int clientWidth = 1080;
+	int clientHeight = 1920;
 
 	std::unique_ptr<Pipeline> pipeline;
 	std::unique_ptr<Mesh> cubeMesh;
