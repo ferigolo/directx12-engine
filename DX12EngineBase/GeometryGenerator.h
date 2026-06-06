@@ -14,5 +14,6 @@ class GeometryGenerator
 public:
 	static MeshData CreateCube();
 	static MeshData CreateTriangle();
+	static MeshData CreateGrid();
 };
 

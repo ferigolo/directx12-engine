@@ -52,3 +52,37 @@ MeshData GeometryGenerator::CreateTriangle()
 
 	return meshData;
 }
+
+MeshData GeometryGenerator::CreateGrid()
+{
+	MeshData meshData;
+	const int gridSize = 40;       // Grid Range [-20, +20]
+	const float spacing = 0.75f, thickness = 0.015f;
+	const XMFLOAT4 color(Colors::DimGray);
+
+	uint16_t index = 0;
+
+	auto AddLineAsRect = [&](float cx, float cz, float halfWidth, float halfDepth)
+		{
+			meshData.Vertices.push_back({ { cx - halfWidth, 0.0f, cz + halfDepth }, color }); // Topo Esquerda
+			meshData.Vertices.push_back({ { cx + halfWidth, 0.0f, cz + halfDepth }, color }); // Topo Direita
+			meshData.Vertices.push_back({ { cx - halfWidth, 0.0f, cz - halfDepth }, color }); // Fundo Esquerda
+			meshData.Vertices.push_back({ { cx + halfWidth, 0.0f, cz - halfDepth }, color }); // Fundo Direita
+
+			meshData.Indexes.push_back(index + 0);
+			meshData.Indexes.push_back(index + 1);
+			meshData.Indexes.push_back(index + 2);
+			meshData.Indexes.push_back(index + 2);
+			meshData.Indexes.push_back(index + 1);
+			meshData.Indexes.push_back(index + 3);
+			index += 4;
+		};
+
+	for (int i = -gridSize; i <= gridSize; ++i)
+	{
+		AddLineAsRect(i * spacing, 0, thickness, gridSize * spacing); // Vertical lines
+		AddLineAsRect(0, i * spacing, gridSize * spacing, thickness); // Horizontal lines
+	}
+
+	return meshData;
+}

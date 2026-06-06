@@ -28,6 +28,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	commandList->Reset(commandAllocators[0].Get(), pipeline->GetPipelineState());
 
 	// Load meshes into GPU
+	// Each one gets its Upload and Default Buffers
 	MeshData cubeData = GeometryGenerator::CreateCube();
 	cubeMesh = std::make_unique<Mesh>();
 	if (!cubeMesh->Initialize(device.Get(), commandList.Get(), cubeData.Vertices.data(), static_cast<UINT>(cubeData.Vertices.size()), cubeData.Indexes.data(), static_cast<UINT>(cubeData.Indexes.size()))) return false;
@@ -35,6 +36,10 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	MeshData triangleData = GeometryGenerator::CreateTriangle();
 	triangleMesh = std::make_unique<Mesh>();
 	if (!triangleMesh->Initialize(device.Get(), commandList.Get(), triangleData.Vertices.data(), static_cast<UINT>(triangleData.Vertices.size()), triangleData.Indexes.data(), static_cast<UINT>(triangleData.Indexes.size()))) return false;
+
+	MeshData gridData = GeometryGenerator::CreateGrid();
+	gridMesh = std::make_unique<Mesh>();
+	if (!gridMesh->Initialize(device.Get(), commandList.Get(), gridData.Vertices.data(), static_cast<UINT>(gridData.Vertices.size()), gridData.Indexes.data(), static_cast<UINT>(gridData.Indexes.size()))) return false;
 
 	commandList->Close();
 	ID3D12CommandList* cmdsLists[] = { commandList.Get() };
@@ -46,33 +51,37 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	// Cube at the center
 	auto cubeObj = std::make_unique<Entity>();
 	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
-	cubeObj->SetPosition(0.0f, 0.0f, 0.0f);
+	cubeObj->SetPosition(0.0f, 1.0f, 0.0f);
 	sceneObjects.push_back(std::move(cubeObj));
 
 	// Triangle to the left
 	auto triangle1 = std::make_unique<Entity>();
 	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle1->SetPosition(-1.0f, 0.0f, 0.0f);
+	triangle1->SetPosition(-1.0f, 1.0f, 0.0f);
 	sceneObjects.push_back(std::move(triangle1));
 
 	// Triangle to the right
 	auto triangle2 = std::make_unique<Entity>();
 	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle2->SetPosition(1.0f, 0.5f, 1.5f);
+	triangle2->SetPosition(1.0f, 1.5f, 1.5f);
 	sceneObjects.push_back(std::move(triangle2));
+
+	this->gridObj = std::make_unique<Entity>();
+	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
+	gridObj->SetPosition(0.0f, -1.0f, 0.0f);
+	gridObj->Update(viewProjectionMatrix);
 
 	return true;
 }
 
 void DX12Context::Render()
 {
-	static float time = 0;
-	time += 0.01f;
+	float rotationTimer = UpdateTimer();
 
 	for (auto& obj : sceneObjects)
 	{
 		obj->Update(viewProjectionMatrix);
-		obj->SetRotation(time, time, time * 0.5f);
+		obj->SetRotation(rotationTimer, rotationTimer, rotationTimer * 0.5f);
 	}
 
 	auto& commandAllocator = commandAllocators[frameIndex];
@@ -107,17 +116,9 @@ void DX12Context::Render()
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	for (auto& obj : sceneObjects)
-	{
-		commandList->SetGraphicsRootConstantBufferView(0, obj->GetConstantBufferAddress());
+		SetBuffersAndDrawIndexedInstanced(obj);
 
-		D3D12_VERTEX_BUFFER_VIEW vbv = obj->GetMesh()->GetVertexBufferView();
-		commandList->IASetVertexBuffers(0, 1, &vbv);
-
-		D3D12_INDEX_BUFFER_VIEW ibv = obj->GetMesh()->GetIndexBufferView();
-		commandList->IASetIndexBuffer(&ibv);
-
-		commandList->DrawIndexedInstanced(obj->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
-	}
+	SetBuffersAndDrawIndexedInstanced(gridObj);
 
 	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
 																 renderTargets[frameIndex].Get(),
@@ -267,4 +268,33 @@ inline void DX12Context::IncrementFenceAndWaitsForGpu()
 		fence->SetEventOnCompletion(fenceValues[frameIndex], fenceEvent);
 		WaitForSingleObject(fenceEvent, INFINITE);
 	}
+}
+
+float DX12Context::UpdateTimer()
+{
+	using namespace std::chrono;
+	static auto prevTime = high_resolution_clock::now();
+	auto currentTime = high_resolution_clock::now();
+
+	float deltaTime = duration<float>(currentTime - prevTime).count(); // How many seconds has passed since last frame
+	prevTime = currentTime;
+
+	static float rotationTimer = 0;
+	static const float rotationSpeed = 1;
+	rotationTimer += rotationSpeed * deltaTime;
+
+	return rotationTimer;
+}
+
+void DX12Context::SetBuffersAndDrawIndexedInstanced(std::unique_ptr<Entity>& obj)
+{
+	commandList->SetGraphicsRootConstantBufferView(0, obj->GetConstantBufferAddress());
+
+	D3D12_VERTEX_BUFFER_VIEW vbv = obj->GetMesh()->GetVertexBufferView();
+	commandList->IASetVertexBuffers(0, 1, &vbv);
+
+	D3D12_INDEX_BUFFER_VIEW ibv = obj->GetMesh()->GetIndexBufferView();
+	commandList->IASetIndexBuffer(&ibv);
+
+	commandList->DrawIndexedInstanced(obj->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
 }

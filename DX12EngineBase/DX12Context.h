@@ -2,6 +2,7 @@
 #include "Entity.h"
 #include "Mesh.h"
 #include "Pipeline.h"
+#include <chrono>
 #include <d3dx12.h>
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
@@ -29,6 +30,8 @@ private:
 	bool CreateFactory();
 	void MoveToNextFrame();
 	inline void IncrementFenceAndWaitsForGpu();
+	static float UpdateTimer();
+	void SetBuffersAndDrawIndexedInstanced(std::unique_ptr<Entity>& obj);
 
 	static const int                  bufferCount = 2; // Double buffering
 	ComPtr<ID3D12Device>              device;
@@ -50,12 +53,14 @@ private:
 	std::unique_ptr<Pipeline> pipeline;
 	std::unique_ptr<Mesh> cubeMesh;
 	std::unique_ptr<Mesh> triangleMesh;
+	std::unique_ptr<Mesh> gridMesh;
+	std::unique_ptr<Entity> gridObj;
 
 	std::vector<std::unique_ptr<Entity>> sceneObjects;
 
 	// View and projection
 	const XMVECTOR eyePosition = XMVectorSet(0.0f, 1.0f, -3.0f, 1.0f); // Camera a little higher and back
-	const XMVECTOR focusPoint = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	const XMVECTOR focusPoint = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f); // Look a little higher
 	const XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	const XMMATRIX viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
