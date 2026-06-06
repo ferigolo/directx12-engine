@@ -18,6 +18,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!CreateSwapChain(hwnd, width, height)) return false;
 	if (!CreateDescriptorHeaps()) return false;
 	if (!CreateRenderTargets()) return false;
+	if (!CreateDepthStencil()) return false;
 	if (!CreateFence()) return false;
 
 	pipeline = std::make_unique<Pipeline>();
@@ -51,13 +52,13 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	// Cube at the center
 	auto cubeObj = std::make_unique<Entity>();
 	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
-	cubeObj->SetPosition(0.0f, 1.0f, 0.0f);
+	cubeObj->SetPosition(0.0f, 1.0f, -1.0f);
 	sceneObjects.push_back(std::move(cubeObj));
 
 	// Triangle to the left
 	auto triangle1 = std::make_unique<Entity>();
 	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle1->SetPosition(-1.0f, 1.0f, 0.0f);
+	triangle1->SetPosition(-0.5f, 1.0f, -1.5f);
 	sceneObjects.push_back(std::move(triangle1));
 
 	// Triangle to the right
@@ -68,7 +69,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 
 	this->gridObj = std::make_unique<Entity>();
 	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
-	gridObj->SetPosition(0.0f, -1.0f, 0.0f);
+	gridObj->SetPosition(0.0f, -1.0f, -2.0f);
 	gridObj->Update(viewProjectionMatrix);
 
 	return true;
@@ -99,11 +100,14 @@ void DX12Context::Render()
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart()); // Pointer for the first item of buffers list
 	rtvHandle.ptr += frameIndex * rtvDescriptorSize; // Gets address of next buffer to render on
 
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+
 	const FLOAT clearColor[] = { 0.0f, 0.0f, 0.15f, 0.0f };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr); // Clear the next buffer
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	// Set the next buffer to be the render target
 	// Everything the shaders outputs goes in here
-	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+	commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
 	// Set render area (full window)
 	D3D12_VIEWPORT viewport = { 0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f };
@@ -115,9 +119,7 @@ void DX12Context::Render()
 	commandList->SetPipelineState(pipeline->GetPipelineState());
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	for (auto& obj : sceneObjects)
-		SetBuffersAndDrawIndexedInstanced(obj);
-
+	for (auto& obj : sceneObjects) SetBuffersAndDrawIndexedInstanced(obj);
 	SetBuffersAndDrawIndexedInstanced(gridObj);
 
 	auto barrierToPresent = CD3DX12_RESOURCE_BARRIER::Transition( // prepare resource to present its content
@@ -241,6 +243,46 @@ bool DX12Context::CreateFence()
 bool DX12Context::CreateFactory()
 {
 	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) return false;
+	return true;
+}
+
+bool DX12Context::CreateDepthStencil()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	if (FAILED(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvHeap)))) return false;
+
+	D3D12_RESOURCE_DESC depthStencilDesc = {};
+	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Alignment = 0;
+	depthStencilDesc.Width = 1280;
+	depthStencilDesc.Height = 720;
+	depthStencilDesc.DepthOrArraySize = 1;
+	depthStencilDesc.MipLevels = 1;
+	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT; // 32-bits for high depth precision
+	depthStencilDesc.SampleDesc.Count = 1;
+	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	D3D12_CLEAR_VALUE optClear = {};
+	optClear.Format = DXGI_FORMAT_D32_FLOAT;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+
+	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	if (FAILED(device->CreateCommittedResource(
+		&heapProps,
+		D3D12_HEAP_FLAG_NONE,
+		&depthStencilDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&optClear,
+		IID_PPV_ARGS(&depthStencilBuffer)
+	))) return false;
+
+	device->CreateDepthStencilView(depthStencilBuffer.Get(), nullptr, dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
 	return true;
 }
 

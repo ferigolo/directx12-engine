@@ -28,6 +28,7 @@ private:
 	bool CreateRenderTargets();
 	bool CreateFence();
 	bool CreateFactory();
+	bool CreateDepthStencil();
 	void MoveToNextFrame();
 	inline void IncrementFenceAndWaitsForGpu();
 	static float UpdateTimer();
@@ -42,6 +43,8 @@ private:
 	ComPtr<ID3D12Resource>            renderTargets[bufferCount];
 	ComPtr<ID3D12CommandAllocator>    commandAllocators[bufferCount];
 	ComPtr<ID3D12GraphicsCommandList> commandList;
+	ComPtr<ID3D12DescriptorHeap>      dsvHeap; // Depth Stencil View Heap
+	ComPtr<ID3D12Resource>            depthStencilBuffer; // Depth texture
 
 	// synchronization mechanisms
 	ComPtr<ID3D12Fence>              fence;
