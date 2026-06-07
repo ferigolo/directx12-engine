@@ -2,18 +2,19 @@
 #include "Pipeline.h"
 #pragma comment(lib, "d3dcompiler.lib")
 
-Pipeline::Pipeline() {}
+Pipeline::Pipeline(int sdc) : sampleDescCount(sdc) {}
 Pipeline::~Pipeline() {}
 
 bool Pipeline::CreateRootSignature(ID3D12Device* device)
 {
 	CD3DX12_ROOT_PARAMETER rootParameters[1]{};
 	rootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
 	// Data interface that describes to the GPU variables the Shaders will have to read
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 	rootSignatureDesc.Init(
 		1, rootParameters,
-		0, nullptr, // Zero 'Static Samplers' (None sample configured)
+		0, nullptr, // Zero 'Static Samplers' (No sample configured)
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 	);
 
@@ -28,12 +29,7 @@ bool Pipeline::CreateRootSignature(ID3D12Device* device)
 										   &errorBlob
 	)))
 	{
-		if (errorBlob)
-		{
-			const char* errorMessage = static_cast<const char*>(errorBlob->GetBufferPointer());
-			OutputDebugStringA("\n[ROOT SIGNATURE ERROR]:\n");
-			OutputDebugStringA(errorMessage + '\n');
-		};
+		if (errorBlob) OutputDebugStringA(static_cast<const char*>(errorBlob->GetBufferPointer()));
 		return false;
 	};
 
@@ -88,7 +84,7 @@ bool Pipeline::CreatePipelineState(ID3D12Device* device)
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.SampleDesc.Count = 1;
+	psoDesc.SampleDesc.Count = sampleDescCount;
 
 	return SUCCEEDED(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState)));
 }

@@ -7,7 +7,13 @@ Entity::Entity()
 {}
 
 Entity::~Entity()
-{}
+{
+	if (constantBuffer != nullptr)
+	{
+		constantBuffer->Unmap(0, nullptr);
+		cbvDataBegin = nullptr;
+	}
+}
 
 bool Entity::Initialize(ID3D12Device* device, Mesh* targetMesh)
 {
@@ -17,7 +23,6 @@ bool Entity::Initialize(ID3D12Device* device, Mesh* targetMesh)
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(cbSize);
 
-	// 2. Agora sim, podes passar o '&' em segurança!
 	if (FAILED(device->CreateCommittedResource(
 		&heapProps,
 		D3D12_HEAP_FLAG_NONE,

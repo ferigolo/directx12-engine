@@ -42,8 +42,8 @@ XMVECTOR Camera::GetForwardVector() const
 {
 	XMVECTOR forward = XMVectorSet(
 		sinf(yaw) * cosf(pitch),
-		sinf(pitch),
-		cosf(yaw) * cosf(pitch),
+		cosf(pitch),
+		sinf(yaw) * sinf(pitch),
 		0.0f
 	);
 	return XMVector3Normalize(forward);

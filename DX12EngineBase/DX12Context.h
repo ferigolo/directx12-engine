@@ -37,6 +37,7 @@ private:
 	void SetBuffersAndDrawIndexedInstanced(Entity* obj);
 
 	static const int                  bufferCount = 2; // Double buffering
+	static const int	              sampleDescCount = 1;
 	ComPtr<ID3D12Device>              device;
 	ComPtr<IDXGIFactory4>             factory;
 	ComPtr<ID3D12CommandQueue>        commandQueue;

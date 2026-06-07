@@ -24,7 +24,7 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!CreateDepthStencil()) return false;
 	if (!CreateFence()) return false;
 
-	pipeline = std::make_unique<Pipeline>();
+	pipeline = std::make_unique<Pipeline>(sampleDescCount);
 	if (!pipeline->CreateRootSignature(device.Get())) return false;
 	if (!pipeline->CreatePipelineState(device.Get())) return false;
 
@@ -99,7 +99,7 @@ void DX12Context::Render()
 
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	const FLOAT clearColor[] = { 0.0f, 0.0f, 0.15f, 0.0f };
+	static const FLOAT clearColor[] = { 0.0f, 0.0f, 0.15f, 0.0f };
 	commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr); // Clear the next buffer
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	// Set the next buffer to be the render target
@@ -193,7 +193,7 @@ bool DX12Context::CreateSwapChain(HWND hwnd)
 	// UNORM->Unsined Normalized(color values between 0.0 and 1.0)
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Changes the buffer is pointing at and discard its content
-	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.SampleDesc.Count = sampleDescCount;
 
 	ComPtr<IDXGISwapChain1> swapChain;
 	if (FAILED(factory->CreateSwapChainForHwnd(commandQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, &swapChain))) return false;
@@ -232,7 +232,7 @@ bool DX12Context::CreateFence()
 	if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)))) return false;
 	for (UINT i = 0; i < bufferCount; i++)
 		fenceValues[i] = 0; // Current value for each frame
-	fenceValues[frameIndex] = 1; // Valeu for the first frame
+	fenceValues[frameIndex] = 1; // Value for the first frame
 	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 	return fenceEvent != nullptr;
 }
@@ -259,7 +259,7 @@ bool DX12Context::CreateDepthStencil()
 	depthStencilDesc.DepthOrArraySize = 1;
 	depthStencilDesc.MipLevels = 1;
 	depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT; // 32-bits for high depth precision
-	depthStencilDesc.SampleDesc.Count = 1;
+	depthStencilDesc.SampleDesc.Count = sampleDescCount;
 	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // Explicity tells the GPU to write depth data 
 

@@ -8,7 +8,7 @@ using Microsoft::WRL::ComPtr;
 class Pipeline
 {
 public:
-	Pipeline();
+	Pipeline(int sampleDescCount = 4);
 	~Pipeline();
 
 	bool CreateRootSignature(ID3D12Device* device);
@@ -19,4 +19,5 @@ public:
 private:
 	ComPtr<ID3D12RootSignature> rootSignature;
 	ComPtr<ID3D12PipelineState> pipelineState;
+	const int                   sampleDescCount;
 };
