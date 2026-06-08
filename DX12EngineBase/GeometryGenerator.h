@@ -12,8 +12,9 @@ struct MeshData
 class GeometryGenerator
 {
 public:
-	static MeshData CreateCube();
 	static MeshData CreateTriangle();
+	static MeshData CreateCube();
+	static MeshData CreateCylinder(float rBottom, float rTop, float height, unsigned int sliceCount, unsigned int stackCount);
 	static MeshData CreateGrid();
 };
 

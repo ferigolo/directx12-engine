@@ -2,36 +2,6 @@
 
 using namespace DirectX;
 
-MeshData GeometryGenerator::CreateCube()
-{
-	MeshData meshData;
-
-	meshData.Vertices = {
-		// Frontal face
-		{ { -0.25f,  0.25f, 0.0f }, XMFLOAT4(Colors::Cyan) },
-		{ {  0.25f,  0.25f, 0.0f }, XMFLOAT4(Colors::DeepPink) },
-		{ {  0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::Yellow) },
-		{ { -0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::LimeGreen) },
-
-		// Back face
-		{ { -0.25f,  0.25f, 0.5f }, XMFLOAT4(Colors::Blue) },
-		{ {  0.25f,  0.25f, 0.5f }, XMFLOAT4(Colors::Red) },
-		{ {  0.25f, -0.25f, 0.5f }, XMFLOAT4(Colors::DarkOrange) },
-		{ { -0.25f, -0.25f, 0.5f }, XMFLOAT4(Colors::Purple) },
-	};
-
-	meshData.Indexes = {
-		0, 1, 2, 0, 2, 3, // Face Frontal
-		4, 6, 5, 4, 7, 6, // Face Traseira
-		4, 5, 1, 4, 1, 0, // Face Superior
-		3, 2, 6, 3, 6, 7, // Face Inferior
-		1, 5, 6, 1, 6, 2, // Face Direita
-		4, 0, 3, 4, 3, 7  // Face Esquerda
-	};
-
-	return meshData;
-}
-
 MeshData GeometryGenerator::CreateTriangle()
 {
 	MeshData meshData;
@@ -53,6 +23,107 @@ MeshData GeometryGenerator::CreateTriangle()
 	return meshData;
 }
 
+MeshData GeometryGenerator::CreateCube()
+{
+	MeshData meshData;
+
+	meshData.Vertices = {
+		// Frontal face
+		{ { -0.25f,  0.25f, 0.0f }, XMFLOAT4(Colors::Cyan) },
+		{ {  0.25f,  0.25f, 0.0f }, XMFLOAT4(Colors::DeepPink) },
+		{ {  0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::Yellow) },
+		{ { -0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::LimeGreen) },
+
+		// Back face
+		{ { -0.25f,  0.25f, 0.5f }, XMFLOAT4(Colors::Blue) },
+		{ {  0.25f,  0.25f, 0.5f }, XMFLOAT4(Colors::Red) },
+		{ {  0.25f, -0.25f, 0.5f }, XMFLOAT4(Colors::DarkOrange) },
+		{ { -0.25f, -0.25f, 0.5f }, XMFLOAT4(Colors::Purple) },
+	};
+
+	meshData.Indexes = {
+		0, 1, 2, 0, 2, 3, // Front face
+		4, 6, 5, 4, 7, 6, // Back face
+		4, 5, 1, 4, 1, 0, // Top face
+		3, 2, 6, 3, 6, 7, // Bottom face
+		1, 5, 6, 1, 6, 2, // Right face
+		4, 0, 3, 4, 3, 7  // Left face
+	};
+
+	return meshData;
+}
+
+MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float height, unsigned int sliceCount, unsigned int stackCount)
+{
+	MeshData meshData;
+
+	float stackHeight = height / stackCount,
+		radiusStep = (rTop - rBottom) / stackCount,
+		theta = 2 * XM_PI / sliceCount; // Angle for each slice
+	unsigned int ringCount = stackCount + 1;
+
+	// Compute vertices for each ring
+	for (unsigned int i = 0; i < ringCount; i++)
+	{
+		float y = (-0.5f * height) + (i * stackHeight),
+			r = rBottom + (i * radiusStep);
+
+		for (unsigned int j = 0; j <= sliceCount; j++)
+		{
+			XMFLOAT4 color = (j % 2 == 0) ? XMFLOAT4(Colors::Azure) : XMFLOAT4(Colors::RoyalBlue);
+			Vertex vertex{ XMFLOAT3(r * cosf(j * theta), y, r * sinf(j * theta)), color };
+			meshData.Vertices.push_back(vertex);
+		}
+	}
+
+	unsigned int ringVertexCount = sliceCount + 1;
+
+	// Compute indexes for each ring
+	for (unsigned int i = 0; i < stackCount; i++)
+	{
+		for (unsigned int j = 0; j < sliceCount; j++)
+		{
+			meshData.Indexes.push_back(i * ringVertexCount + j);
+			meshData.Indexes.push_back((i + 1) * ringVertexCount + j);
+			meshData.Indexes.push_back((i + 1) * ringVertexCount + (j + 1));
+			meshData.Indexes.push_back(i * ringVertexCount + j);
+			meshData.Indexes.push_back((i + 1) * ringVertexCount + (j + 1));
+			meshData.Indexes.push_back(i * ringVertexCount + (j + 1));
+		}
+	}
+
+	// Compute top and bottom faces (lids)
+	for (unsigned int k = 0; k < 2; k++)
+	{
+		unsigned int startIndex = meshData.Vertices.size();
+		float y = (k - 0.5f) * height,
+			r = (k ? rTop : rBottom);
+
+		XMFLOAT4 color = (k == 0) ? XMFLOAT4(Colors::LimeGreen) : XMFLOAT4(Colors::OrangeRed);
+		for (unsigned int i = 0; i <= sliceCount; i++)
+		{
+			Vertex vertex{ XMFLOAT3(r * cosf(i * theta), y, r * sinf(i * theta)), color };
+			meshData.Vertices.push_back(vertex);
+		}
+
+		// Central vertex
+		unsigned int centerIndex = meshData.Vertices.size();
+		Vertex vertex{ XMFLOAT3(0, y, 0), XMFLOAT4(Colors::Azure) };
+		meshData.Vertices.push_back(vertex);
+
+		// Lid indexes
+		for (unsigned int i = 0; i < sliceCount; i++)
+		{
+			meshData.Indexes.push_back(centerIndex);
+			meshData.Indexes.push_back(startIndex + i + k);
+			meshData.Indexes.push_back(startIndex + i + 1 - k);
+		}
+	}
+
+	return meshData;
+}
+
+
 MeshData GeometryGenerator::CreateGrid()
 {
 	MeshData meshData;
@@ -64,10 +135,10 @@ MeshData GeometryGenerator::CreateGrid()
 
 	auto AddLineAsRect = [&](float cx, float cz, float halfWidth, float halfDepth)
 		{
-			meshData.Vertices.push_back({ { cx - halfWidth, 0.0f, cz + halfDepth }, color }); // Topo Esquerda
-			meshData.Vertices.push_back({ { cx + halfWidth, 0.0f, cz + halfDepth }, color }); // Topo Direita
-			meshData.Vertices.push_back({ { cx - halfWidth, 0.0f, cz - halfDepth }, color }); // Fundo Esquerda
-			meshData.Vertices.push_back({ { cx + halfWidth, 0.0f, cz - halfDepth }, color }); // Fundo Direita
+			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz + halfDepth }, color }); // Top left
+			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz + halfDepth }, color }); // Top right
+			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz - halfDepth }, color }); // Back left
+			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz - halfDepth }, color }); // Back right
 
 			meshData.Indexes.push_back(index + 0);
 			meshData.Indexes.push_back(index + 1);

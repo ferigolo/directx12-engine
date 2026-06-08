@@ -40,10 +40,11 @@ XMMATRIX Camera::GetProjectionMatrix(float fov, float aspectRatio, float nearZ, 
 
 XMVECTOR Camera::GetForwardVector() const
 {
+	static float radius = 5;
 	XMVECTOR forward = XMVectorSet(
-		sinf(yaw) * cosf(pitch),
-		cosf(pitch),
-		sinf(yaw) * sinf(pitch),
+		sinf(yaw) * cosf(pitch) * radius,
+		cosf(pitch) * radius,
+		sinf(yaw) * sinf(pitch) * radius,
 		0.0f
 	);
 	return XMVector3Normalize(forward);
@@ -51,7 +52,7 @@ XMVECTOR Camera::GetForwardVector() const
 
 XMVECTOR Camera::GetRightVector() const
 {
-	XMVECTOR forward = GetForwardVector();
-	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMVECTOR forward = GetForwardVector(),
+		up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	return XMVector3Normalize(XMVector3Cross(up, forward));
 }

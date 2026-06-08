@@ -63,6 +63,7 @@ private:
 	std::unique_ptr<Mesh> cubeMesh;
 	std::unique_ptr<Mesh> triangleMesh;
 	std::unique_ptr<Mesh> gridMesh;
+	std::unique_ptr<Mesh> cylinderMesh;
 
 	Scene mainScene;
 };

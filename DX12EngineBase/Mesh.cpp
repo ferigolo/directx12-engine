@@ -30,6 +30,7 @@ bool Mesh::Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandLi
 	return true;
 }
 
+// Used for uploading vertices and indexes into default buffers
 bool Mesh::CreateDefaultBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& defaultBuffer, ComPtr<ID3D12Resource>& uploadBuffer)
 {
 	// Final buffer on VRAM

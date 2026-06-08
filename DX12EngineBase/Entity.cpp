@@ -18,7 +18,7 @@ Entity::~Entity()
 bool Entity::Initialize(ID3D12Device* device, Mesh* targetMesh)
 {
 	this->mesh = targetMesh;
-	// Creates the constant buffer for each object
+	// Creates the constant buffer for this object
 	const UINT cbSize = (sizeof(EntityConstants) + 255) & ~255;
 	auto heapProps = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(cbSize);

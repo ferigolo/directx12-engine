@@ -31,11 +31,12 @@ void Scene::Update(float deltaTime, int clientWidth, int clientHeight)
 	static float rotationTimer = 0;
 	rotationTimer += 1 * deltaTime; // Speed of rotation
 
-	if (sceneObjects.size() >= 3)
+	if (sceneObjects.size() >= 4)
 	{
 		sceneObjects[0]->SetRotation(rotationTimer, rotationTimer, rotationTimer * 0.5f);
 		sceneObjects[1]->SetRotation(0.0f, rotationTimer, 0.0f);
 		sceneObjects[2]->SetRotation(rotationTimer, 0.0f, 0.0f);
+		sceneObjects[3]->SetRotation(rotationTimer, 0.0f, rotationTimer);
 	}
 
 	for (auto& obj : sceneObjects) obj->Update(viewProj);

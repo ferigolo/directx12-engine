@@ -45,6 +45,10 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	gridMesh = std::make_unique<Mesh>();
 	if (!gridMesh->Initialize(device.Get(), commandList.Get(), gridData.Vertices.data(), static_cast<UINT>(gridData.Vertices.size()), gridData.Indexes.data(), static_cast<UINT>(gridData.Indexes.size()))) return false;
 
+	MeshData cylinderData = GeometryGenerator::CreateCylinder(0.25f, 0.25f, 1.0f, 40, 2);
+	cylinderMesh = std::make_unique<Mesh>();
+	if (!cylinderMesh->Initialize(device.Get(), commandList.Get(), cylinderData.Vertices.data(), static_cast<UINT>(cylinderData.Vertices.size()), cylinderData.Indexes.data(), static_cast<UINT>(cylinderData.Indexes.size()))) return false;
+
 	commandList->Close();
 	ID3D12CommandList* cmdsLists[] = { commandList.Get() };
 	commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
@@ -69,6 +73,11 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
 	triangle2->SetPosition(1.0f, 0.0f, 0.0f);
 	mainScene.AddObject(std::move(triangle2));
+
+	auto cylinderObj = std::make_unique<Entity>();
+	if (!cylinderObj->Initialize(device.Get(), cylinderMesh.get())) return false;
+	cylinderObj->SetPosition(0, 0, -2);
+	mainScene.AddObject(std::move(cylinderObj));
 
 	auto gridObj = std::make_unique<Entity>();
 	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
