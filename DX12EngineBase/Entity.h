@@ -1,7 +1,6 @@
 #pragma once
 #include "Mesh.h"
 #include <DirectXMath.h>
-#include <wrl.h>
 
 using namespace DirectX;
 using namespace Microsoft::WRL;
@@ -21,6 +20,7 @@ public:
 	void Update(XMMATRIX viewProjectionMatrix) const;
 
 	void SetPosition(float x, float y, float z) { position = { x, y, z }; }
+	void SetPosition(XMFLOAT3 position) { this->position = position; }
 	void SetRotation(float x, float y, float z) { rotation = { x, y, z }; }
 	void SetScale(float x, float y, float z) { scale = { x, y, z }; }
 

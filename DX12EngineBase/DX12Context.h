@@ -1,5 +1,6 @@
 #pragma once
 #include "Entity.h"
+#include "GeometryGenerator.h"
 #include "Mesh.h"
 #include "Pipeline.h"
 #include "Scene.h"
@@ -7,7 +8,10 @@
 #include <d3dx12.h>
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
+#include <string>
+#include <unordered_map>
 
+using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 class DX12Context
@@ -31,9 +35,13 @@ private:
 	bool CreateFence();
 	bool CreateFactory();
 	bool CreateDepthStencil();
-	void MoveToNextFrame();
 	inline void IncrementFenceAndWaitsForGpu();
+
 	static float UpdateTimer();
+	void MoveToNextFrame();
+
+	bool AllocateMesh(const MeshData& meshData, std::string meshName);
+	bool CreateEntity(std::string name, XMFLOAT3 position, bool isGrid = false);
 	void SetBuffersAndDrawIndexedInstanced(Entity* obj);
 
 	static const int                  bufferCount = 2; // Double buffering
@@ -56,14 +64,10 @@ private:
 	UINT                             frameIndex;
 	UINT                             rtvDescriptorSize;
 
-	int clientWidth = 1080;
-	int clientHeight = 1920;
+	int clientWidth = 1080,
+		clientHeight = 1920;
 
+	std::unordered_map<std::string, std::unique_ptr<Mesh>> meshMap;
 	std::unique_ptr<Pipeline> pipeline;
-	std::unique_ptr<Mesh> cubeMesh;
-	std::unique_ptr<Mesh> triangleMesh;
-	std::unique_ptr<Mesh> gridMesh;
-	std::unique_ptr<Mesh> cylinderMesh;
-
 	Scene mainScene;
 };

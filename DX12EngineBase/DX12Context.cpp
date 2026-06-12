@@ -1,5 +1,4 @@
 #include "DX12Context.h"
-#include "GeometryGenerator.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -33,21 +32,11 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 
 	// Load meshes into GPU
 	// Each one gets its Upload and Default Buffers
-	MeshData cubeData = GeometryGenerator::CreateCube();
-	cubeMesh = std::make_unique<Mesh>();
-	if (!cubeMesh->Initialize(device.Get(), commandList.Get(), cubeData.Vertices.data(), static_cast<UINT>(cubeData.Vertices.size()), cubeData.Indexes.data(), static_cast<UINT>(cubeData.Indexes.size()))) return false;
-
-	MeshData triangleData = GeometryGenerator::CreateTriangle();
-	triangleMesh = std::make_unique<Mesh>();
-	if (!triangleMesh->Initialize(device.Get(), commandList.Get(), triangleData.Vertices.data(), static_cast<UINT>(triangleData.Vertices.size()), triangleData.Indexes.data(), static_cast<UINT>(triangleData.Indexes.size()))) return false;
-
-	MeshData gridData = GeometryGenerator::CreateGrid();
-	gridMesh = std::make_unique<Mesh>();
-	if (!gridMesh->Initialize(device.Get(), commandList.Get(), gridData.Vertices.data(), static_cast<UINT>(gridData.Vertices.size()), gridData.Indexes.data(), static_cast<UINT>(gridData.Indexes.size()))) return false;
-
-	MeshData cylinderData = GeometryGenerator::CreateCylinder(0.25f, 0.25f, 1.0f, 40, 2);
-	cylinderMesh = std::make_unique<Mesh>();
-	if (!cylinderMesh->Initialize(device.Get(), commandList.Get(), cylinderData.Vertices.data(), static_cast<UINT>(cylinderData.Vertices.size()), cylinderData.Indexes.data(), static_cast<UINT>(cylinderData.Indexes.size()))) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateCube(), "cube")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateTriangle(), "triangle")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateCylinder(0.25f, 0.25f, 1.0f, 40, 2), "cylinder")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateSphere(0.5f, 20, 20), "sphere")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateGrid(), "grid")) return false;
 
 	commandList->Close();
 	ID3D12CommandList* cmdsLists[] = { commandList.Get() };
@@ -56,34 +45,38 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	IncrementFenceAndWaitsForGpu();
 
 	// Create world
-	// Cube at the center
-	auto cubeObj = std::make_unique<Entity>();
-	if (!cubeObj->Initialize(device.Get(), cubeMesh.get())) return false;
-	cubeObj->SetPosition(0.0f, 1.0f, -0.5f);
-	mainScene.AddObject(std::move(cubeObj));
+	if (!CreateEntity("cube", XMFLOAT3{ 0.0f, 1.0f, -0.5f })) return false; // Cube at the center
+	if (!CreateEntity("triangle", XMFLOAT3{ -0.5f, 0.5f, -1.0f })) return false; // Triangle to the left
+	if (!CreateEntity("triangle", XMFLOAT3{ 1.0f, 0.0f, 0.0f })) return false; // Triangle to the right
+	if (!CreateEntity("cylinder", XMFLOAT3{ 0.0f, 0.0f, -2.0f })) return false;
+	if (!CreateEntity("sphere", XMFLOAT3{ 0.0f, 2.0f, 2.0f })) return false;
+	if (!CreateEntity("grid", XMFLOAT3{ 0.0f, -2.0f, 0.0f }, true)) return false;
+	return true;
+}
 
-	// Triangle to the left
-	auto triangle1 = std::make_unique<Entity>();
-	if (!triangle1->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle1->SetPosition(-0.5f, 0.5f, -1.0f);
-	mainScene.AddObject(std::move(triangle1));
+bool DX12Context::AllocateMesh(const MeshData& meshData, std::string meshName)
+{
+	auto mesh = std::make_unique<Mesh>();
 
-	// Triangle to the right
-	auto triangle2 = std::make_unique<Entity>();
-	if (!triangle2->Initialize(device.Get(), triangleMesh.get())) return false;
-	triangle2->SetPosition(1.0f, 0.0f, 0.0f);
-	mainScene.AddObject(std::move(triangle2));
+	if (!mesh->Initialize(
+		device.Get(),
+		commandList.Get(),
+		(Vertex*)meshData.Vertices.data(),
+		static_cast<UINT>(meshData.Vertices.size()),
+		(uint16_t*)meshData.Indexes.data(),
+		static_cast<UINT>(meshData.Indexes.size())
+	)) return false;
 
-	auto cylinderObj = std::make_unique<Entity>();
-	if (!cylinderObj->Initialize(device.Get(), cylinderMesh.get())) return false;
-	cylinderObj->SetPosition(0, 0, -2);
-	mainScene.AddObject(std::move(cylinderObj));
+	meshMap[meshName] = std::move(mesh);
+	return true;
+}
 
-	auto gridObj = std::make_unique<Entity>();
-	if (!gridObj->Initialize(device.Get(), gridMesh.get())) return false;
-	gridObj->SetPosition(0.0f, -1.0f, 0.0f);
-	mainScene.SetGrid(std::move(gridObj));
-
+bool DX12Context::CreateEntity(std::string name, XMFLOAT3 position, bool isGrid)
+{
+	auto entity = std::make_unique<Entity>();
+	if (!entity->Initialize(device.Get(), meshMap[name].get())) return false;
+	entity->SetPosition(position);
+	isGrid ? mainScene.SetGrid(std::move(entity)) : mainScene.AddObject(std::move(entity));
 	return true;
 }
 

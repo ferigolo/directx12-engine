@@ -37,6 +37,7 @@ void Scene::Update(float deltaTime, int clientWidth, int clientHeight)
 		sceneObjects[1]->SetRotation(0.0f, rotationTimer, 0.0f);
 		sceneObjects[2]->SetRotation(rotationTimer, 0.0f, 0.0f);
 		sceneObjects[3]->SetRotation(rotationTimer, 0.0f, rotationTimer);
+		sceneObjects[4]->SetRotation(0.0f, rotationTimer, rotationTimer);
 	}
 
 	for (auto& obj : sceneObjects) obj->Update(viewProj);

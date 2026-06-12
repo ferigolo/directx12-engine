@@ -123,11 +123,81 @@ MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float heig
 	return meshData;
 }
 
+MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, unsigned int stackCount)
+{
+	MeshData meshData;
+
+	Vertex topVertex{ XMFLOAT3(0.0f, radius, 0.0f), XMFLOAT4(Colors::Red) }; // North pole
+	meshData.Vertices.push_back(topVertex);
+
+	const float phiStep = XM_PI / stackCount,
+		thetaStep = 2 * XM_PI / sliceCount;
+
+	for (unsigned int i = 1; i < stackCount; i++)
+	{
+		const float phi = i * phiStep; // Vertical angle measured from the north pole to the bottom (0≤ϕ≤π)
+		for (unsigned int j = 0; j <= sliceCount; j++)
+		{
+			const float theta = j * thetaStep, // Horizontal angle measured from the Z axis (0≤θ<2π)
+
+				// Espheric coordinates
+				x = radius * sinf(phi) * cosf(theta),
+				y = radius * cosf(phi),
+				z = radius * sinf(phi) * sinf(theta);
+
+			Vertex vertex{
+				XMFLOAT3(x, y, z),
+				(j % 2 == 0) ? XMFLOAT4(Colors::Azure) : XMFLOAT4(Colors::RoyalBlue) // Color
+			};
+			meshData.Vertices.push_back(vertex);
+		}
+	}
+
+	Vertex bottomVertex{ XMFLOAT3(0.0f, -radius, 0.0f), XMFLOAT4(Colors::LimeGreen) }; // South pole
+	meshData.Vertices.push_back(bottomVertex);
+
+	// Indexes
+	for (unsigned int i = 1; i <= sliceCount; i++) // Vertices connected to south pole
+	{
+		meshData.Indexes.push_back(0);
+		meshData.Indexes.push_back(i + 1);
+		meshData.Indexes.push_back(i);
+	}
+
+	// Sphere body
+	unsigned int ringVertexCount = sliceCount + 1, // We repeat the first and last vertices
+		baseIndex = 1;
+
+	for (unsigned int i = 0; i < stackCount - 2; i++)
+		for (unsigned int j = 0; j < sliceCount; j++)
+		{
+			meshData.Indexes.push_back(baseIndex + i * ringVertexCount + j);
+			meshData.Indexes.push_back(baseIndex + i * ringVertexCount + j + 1);
+			meshData.Indexes.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+
+			meshData.Indexes.push_back(baseIndex + (i + 1) * ringVertexCount + j);
+			meshData.Indexes.push_back(baseIndex + i * ringVertexCount + j + 1);
+			meshData.Indexes.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
+		}
+
+
+	unsigned int southPoleIndex = (unsigned int)meshData.Vertices.size() - 1; // Last one
+	baseIndex = southPoleIndex - ringVertexCount; // Where the ring that connects to south pole vertex starts
+
+	for (unsigned int i = 0; i < sliceCount; i++)
+	{
+		meshData.Indexes.push_back(southPoleIndex); // Everyone connects to south pole vertex
+		meshData.Indexes.push_back(baseIndex + i);
+		meshData.Indexes.push_back(baseIndex + i + 1);
+	}
+
+	return meshData;
+}
 
 MeshData GeometryGenerator::CreateGrid()
 {
 	MeshData meshData;
-	const int gridSize = 40;       // Grid Range [-20, +20]
+	const int gridSize = 40; // Grid Range [-20, +20]
 	const float spacing = 0.75f, thickness = 0.015f;
 	const XMFLOAT4 color(Colors::DimGray);
 
