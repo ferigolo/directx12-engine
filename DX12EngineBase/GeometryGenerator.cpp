@@ -126,8 +126,13 @@ MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float heig
 MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, unsigned int stackCount)
 {
 	MeshData meshData;
+	XMVECTORF32
+		colorBottom = Colors::DarkMagenta,
+		colorTop = Colors::Cyan;
 
-	Vertex topVertex{ XMFLOAT3(0.0f, radius, 0.0f), XMFLOAT4(Colors::Red) }; // North pole
+	Vertex topVertex{}; // North pole
+	topVertex.position = XMFLOAT3(0.0f, radius, 0.0f);
+	XMStoreFloat4(&topVertex.color, colorTop);
 	meshData.Vertices.push_back(topVertex);
 
 	const float phiStep = XM_PI / stackCount,
@@ -153,8 +158,19 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 		}
 	}
 
-	Vertex bottomVertex{ XMFLOAT3(0.0f, -radius, 0.0f), XMFLOAT4(Colors::LimeGreen) }; // South pole
+	Vertex bottomVertex{ }; // South pole
+	bottomVertex.position = XMFLOAT3(0.0f, -radius, 0.0f);
+	XMStoreFloat4(&bottomVertex.color, colorBottom);
 	meshData.Vertices.push_back(bottomVertex);
+
+	for (auto& vertex : meshData.Vertices)
+	{
+		float t = (vertex.position.y + radius) / (2 * radius);
+		//XMVECTOR color = colorBottom + (colorTop - colorBottom) * t;
+		XMVECTOR color = XMVectorLerp(colorBottom, colorTop, t);
+		XMStoreFloat4(&vertex.color, color);
+		vertex.color.w = 1;
+	}
 
 	// Indexes
 	for (unsigned int i = 1; i <= sliceCount; i++) // Vertices connected to south pole
@@ -180,7 +196,6 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 			meshData.Indexes.push_back(baseIndex + (i + 1) * ringVertexCount + j + 1);
 		}
 
-
 	unsigned int southPoleIndex = (unsigned int)meshData.Vertices.size() - 1; // Last one
 	baseIndex = southPoleIndex - ringVertexCount; // Where the ring that connects to south pole vertex starts
 
@@ -189,6 +204,102 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 		meshData.Indexes.push_back(southPoleIndex); // Everyone connects to south pole vertex
 		meshData.Indexes.push_back(baseIndex + i);
 		meshData.Indexes.push_back(baseIndex + i + 1);
+	}
+
+	return meshData;
+}
+
+MeshData GeometryGenerator::CreateIcosphere(float radius, unsigned int numSubdivisions)
+{
+	MeshData meshData;
+	numSubdivisions = std::min<unsigned int>(numSubdivisions, 6u);
+	// phi = (1 + sqrt(5)) / 2
+	// X = 1 / sqrt(1 + phi^2)
+	// Z = phi / sqrt(1 + phi^2)
+	const float
+		X = 0.525731f,
+		Z = 0.850651f;
+
+	XMFLOAT3 pos[12] = {
+		XMFLOAT3(-X, 0.0f, Z),  XMFLOAT3(X, 0.0f, Z),
+		XMFLOAT3(-X, 0.0f, -Z), XMFLOAT3(X, 0.0f, -Z),
+		XMFLOAT3(0.0f, Z, X),   XMFLOAT3(0.0f, Z, -X),
+		XMFLOAT3(0.0f, -Z, X),  XMFLOAT3(0.0f, -Z, -X),
+		XMFLOAT3(Z, X, 0.0f),   XMFLOAT3(-Z, X, 0.0f),
+		XMFLOAT3(Z, -X, 0.0f),  XMFLOAT3(-Z, -X, 0.0f)
+	};
+
+	uint16_t k[60] = {
+		1,4,0,  4,9,0,  4,5,9,  8,5,4,  1,8,4,
+		1,10,8, 10,3,8, 8,3,5,  3,2,5,  3,7,2,
+		3,10,7, 10,6,7, 6,11,7, 6,0,11, 6,1,0,
+		10,1,6, 11,0,9, 2,11,9, 5,2,9,  11,2,7
+	};
+
+	meshData.Vertices.resize(12);
+
+	for (unsigned int i = 0; i < 12; i++)
+	{
+		XMVECTOR v = XMVector3Normalize(XMLoadFloat3(&pos[i])) * radius;
+		XMStoreFloat3(&meshData.Vertices[i].position, v);
+		meshData.Vertices[i].color = XMFLOAT4();
+	}
+	meshData.Indexes.assign(&k[0], &k[60]);
+
+	for (unsigned int i = 0; i < numSubdivisions; i++)
+	{
+		MeshData subMesh;
+		subMesh.Vertices = meshData.Vertices; // Copies current level vertices
+
+		for (size_t j = 0; j < meshData.Indexes.size(); j += 3)
+		{
+			Vertex v[3]{};
+			for (int k = 0; k < 3; k++)
+				v[k] = subMesh.Vertices[meshData.Indexes[j + k]];
+
+			auto MidPoint = [&](const Vertex& a, const Vertex& b)
+				{
+					Vertex m{};
+					XMVECTOR
+						p0 = XMLoadFloat3(&a.position),
+						p1 = XMLoadFloat3(&b.position);
+
+					XMVECTOR mid = 0.5f * (p0 + p1); // Mid point
+					mid = XMVector3Normalize(mid) * radius; // Pulls into the curve
+
+					XMStoreFloat3(&m.position, mid);
+					m.color = XMFLOAT4();
+					return m;
+				};
+
+			Vertex mid[]{
+				MidPoint(v[0], v[1]),
+				MidPoint(v[1], v[2]),
+				MidPoint(v[2], v[0]) };
+
+			uint16_t im0 = (uint16_t)subMesh.Vertices.size(); subMesh.Vertices.push_back(mid[0]);
+			uint16_t im1 = (uint16_t)subMesh.Vertices.size(); subMesh.Vertices.push_back(mid[1]);
+			uint16_t im2 = (uint16_t)subMesh.Vertices.size(); subMesh.Vertices.push_back(mid[2]);
+
+			subMesh.Indexes.push_back(meshData.Indexes[j + 0]);  subMesh.Indexes.push_back(im0); subMesh.Indexes.push_back(im2);
+			subMesh.Indexes.push_back(im0); subMesh.Indexes.push_back(meshData.Indexes[j + 1]);  subMesh.Indexes.push_back(im1);
+			subMesh.Indexes.push_back(im2); subMesh.Indexes.push_back(im1); subMesh.Indexes.push_back(meshData.Indexes[j + 2]);
+			subMesh.Indexes.push_back(im0); subMesh.Indexes.push_back(im1); subMesh.Indexes.push_back(im2);
+		}
+		meshData = subMesh;
+	}
+
+	XMVECTORF32
+		colorBottom = Colors::DarkMagenta,
+		colorTop = Colors::Cyan;
+
+	for (auto& vertex : meshData.Vertices)
+	{
+		float t = (vertex.position.y + radius) / (2 * radius);
+		//XMVECTOR color = colorBottom + (colorTop - colorBottom) * t;
+		XMVECTOR color = XMVectorLerp(colorBottom, colorTop, t);
+		XMStoreFloat4(&vertex.color, color);
+		vertex.color.w = 1;
 	}
 
 	return meshData;

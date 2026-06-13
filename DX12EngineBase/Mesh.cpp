@@ -30,6 +30,13 @@ bool Mesh::Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandLi
 	return true;
 }
 
+// Clear the temp memory out of RAM because data will live exclusive on VRAM (Default buffers)
+void Mesh::DisposeUploadBuffers()
+{
+	vertexBufferUploader.Reset();
+	indexBufferUploader.Reset();
+}
+
 // Used for uploading vertices and indexes into default buffers
 bool Mesh::CreateDefaultBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, const void* initData, UINT64 byteSize, ComPtr<ID3D12Resource>& defaultBuffer, ComPtr<ID3D12Resource>& uploadBuffer)
 {

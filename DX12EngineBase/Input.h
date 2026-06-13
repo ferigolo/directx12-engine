@@ -4,9 +4,6 @@
 class Input
 {
 public:
-	static bool IsKeyDown(int virtualKeyCode)
-	{
-		// The more significant bit tells if a key is physically pressed
-		return (GetAsyncKeyState(virtualKeyCode) & 0x8000) != 0;
-	}
+	// The more significant bit tells if a key is physically pressed
+	static bool IsKeyDown(int virtualKeyCode) { return (GetAsyncKeyState(virtualKeyCode) & 0x8000) != 0; }
 };

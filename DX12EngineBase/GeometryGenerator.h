@@ -16,6 +16,7 @@ public:
 	static MeshData CreateCube();
 	static MeshData CreateCylinder(float rBottom, float rTop, float height, unsigned int sliceCount, unsigned int stackCount);
 	static MeshData CreateSphere(float radius, unsigned int sliceCount, unsigned int stackCount);
+	static MeshData CreateIcosphere(float radius = 1.0f, unsigned int numSubdivisions = 6);
 	static MeshData CreateGrid();
 };
 

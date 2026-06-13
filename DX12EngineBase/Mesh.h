@@ -19,6 +19,9 @@ public:
 	~Mesh();
 
 	bool Initialize(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, Vertex* vertices, UINT vertexCount, uint16_t* indices, UINT indexCount);
+	// Clear the temp memory out of RAM because data will live exclusive on VRAM (Default buffers)
+	void DisposeUploadBuffers();
+
 	D3D12_VERTEX_BUFFER_VIEW GetVertexBufferView() const { return vertexBufferView; }
 	D3D12_INDEX_BUFFER_VIEW GetIndexBufferView() const { return indexBufferView; }
 	UINT GetIndexCount() const { return indexCount; }

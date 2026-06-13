@@ -35,7 +35,8 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 	if (!AllocateMesh(GeometryGenerator::CreateCube(), "cube")) return false;
 	if (!AllocateMesh(GeometryGenerator::CreateTriangle(), "triangle")) return false;
 	if (!AllocateMesh(GeometryGenerator::CreateCylinder(0.25f, 0.25f, 1.0f, 40, 2), "cylinder")) return false;
-	if (!AllocateMesh(GeometryGenerator::CreateSphere(0.5f, 20, 20), "sphere")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateSphere(0.25f, 20, 20), "sphere")) return false;
+	if (!AllocateMesh(GeometryGenerator::CreateIcosphere(0.25f, 6U), "icosphere")) return false;
 	if (!AllocateMesh(GeometryGenerator::CreateGrid(), "grid")) return false;
 
 	commandList->Close();
@@ -44,12 +45,16 @@ bool DX12Context::Initialize(HWND hwnd, int width, int height)
 
 	IncrementFenceAndWaitsForGpu();
 
+	for (auto& pair : meshMap)
+		pair.second->DisposeUploadBuffers(); // GPU had already coppied the data from vertex and index buffers, so we clean them
+
 	// Create world
 	if (!CreateEntity("cube", XMFLOAT3{ 0.0f, 1.0f, -0.5f })) return false; // Cube at the center
 	if (!CreateEntity("triangle", XMFLOAT3{ -0.5f, 0.5f, -1.0f })) return false; // Triangle to the left
 	if (!CreateEntity("triangle", XMFLOAT3{ 1.0f, 0.0f, 0.0f })) return false; // Triangle to the right
 	if (!CreateEntity("cylinder", XMFLOAT3{ 0.0f, 0.0f, -2.0f })) return false;
-	if (!CreateEntity("sphere", XMFLOAT3{ 0.0f, 2.0f, 2.0f })) return false;
+	if (!CreateEntity("sphere", XMFLOAT3{ 0.0f, 1.5f, 1.0f })) return false;
+	if (!CreateEntity("icosphere", XMFLOAT3{ -1.0f, 1.0f, -2.0f })) return false;
 	if (!CreateEntity("grid", XMFLOAT3{ 0.0f, -2.0f, 0.0f }, true)) return false;
 	return true;
 }
