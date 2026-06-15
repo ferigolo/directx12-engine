@@ -45,15 +45,15 @@ bool Pipeline::CreatePipelineState(ID3D12Device* device)
 {
 	ComPtr<ID3DBlob> vertexShader, pixelShader, errorBlob;
 
-	// Compiles pixelShader from file
-	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &errorBlob)))
+	// Compiles vertexShader from file
+	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &errorBlob)))
 	{
 		if (errorBlob) OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 		return false;
 	}
 
-	// Compiles vertexShader from file
-	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &errorBlob)))
+	// Compiles pixelShader from file
+	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &errorBlob)))
 	{
 		if (errorBlob) OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 		return false;
@@ -62,8 +62,8 @@ bool Pipeline::CreatePipelineState(ID3D12Device* device)
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
 		// "POSITION": Starts at byte 0 of struct, 3 floats (RGB32)
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		// "COLOR": Starts at byte 12 of struct, 4 floats (RGBA32)
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
 	// Mounting the PSO package
