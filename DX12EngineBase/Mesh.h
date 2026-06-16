@@ -9,6 +9,7 @@ using namespace DirectX;
 struct Vertex
 {
 	XMFLOAT3 position; // X, Y, Z
+	XMFLOAT3 normal;   // Nx, Ny, Nz
 	XMFLOAT4 color;    // R, G, B, A
 };
 

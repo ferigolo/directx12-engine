@@ -5,14 +5,13 @@ using namespace DirectX;
 MeshData GeometryGenerator::CreateTriangle()
 {
 	MeshData meshData;
-
 	meshData.Vertices = {
-		{ {  0.0f,   0.25f, 0.25f }, XMFLOAT4(Colors::Magenta) },
-		{ {  0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::SpringGreen) },
-		{ { -0.25f, -0.25f, 0.0f }, XMFLOAT4(Colors::Magenta) },
-		{ {  0.0f,  0.125f, -0.5f }, XMFLOAT4(Colors::Aqua) }
+		//     POSITION (X,Y,Z)			NORMAL (X,Y,Z)           COLOR (R,G,B,A)
+		{ {  0.0f,   0.25f, 0.25f }, { 0.0f, 0.0f, -1.0f }, XMFLOAT4(Colors::Magenta) },
+		{ {  0.25f, -0.25f, 0.0f  }, { 0.0f, 0.0f, -1.0f }, XMFLOAT4(Colors::SpringGreen) },
+		{ { -0.25f, -0.25f, 0.0f  }, { 0.0f, 0.0f, -1.0f }, XMFLOAT4(Colors::Magenta) },
+		{ {  0.0f,  0.125f, -0.5f }, { 0.0f, 0.0f, -1.0f }, XMFLOAT4(Colors::Aqua) }
 	};
-
 	meshData.Indexes = {
 		0, 1, 2,
 		0, 3, 1,
@@ -70,8 +69,12 @@ MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float heig
 
 		for (unsigned int j = 0; j <= sliceCount; j++)
 		{
+			XMFLOAT3 pos{ r * cosf(j * theta), y, r * sinf(j * theta) };
+			XMFLOAT3 normal;
+			DirectX::XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&normal)));
 			XMFLOAT4 color = (j % 2 == 0) ? XMFLOAT4(Colors::Azure) : XMFLOAT4(Colors::RoyalBlue);
-			Vertex vertex{ XMFLOAT3(r * cosf(j * theta), y, r * sinf(j * theta)), color };
+
+			Vertex vertex{ pos, normal, color };
 			meshData.Vertices.push_back(vertex);
 		}
 	}
@@ -93,22 +96,27 @@ MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float heig
 	}
 
 	// Compute top and bottom faces (lids)
+	XMFLOAT4 color = XMFLOAT4(Colors::LimeGreen);
+	float r = rBottom;
+	XMFLOAT3 normal{ 0, -1, 0 };
 	for (unsigned int k = 0; k < 2; k++)
 	{
 		unsigned int startIndex = meshData.Vertices.size();
-		float y = (k - 0.5f) * height,
-			r = (k ? rTop : rBottom);
+		float y = (k - 0.5f) * height;
 
-		XMFLOAT4 color = (k == 0) ? XMFLOAT4(Colors::LimeGreen) : XMFLOAT4(Colors::OrangeRed);
 		for (unsigned int i = 0; i <= sliceCount; i++)
 		{
-			Vertex vertex{ XMFLOAT3(r * cosf(i * theta), y, r * sinf(i * theta)), color };
+			XMFLOAT3 position(r * cosf(i * theta), y, r * sinf(i * theta));
+			XMFLOAT3 normal{ position.x, 0, position.z };
+			DirectX::XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&normal)));
+
+			Vertex vertex{ position, normal ,color };
 			meshData.Vertices.push_back(vertex);
 		}
 
 		// Central vertex
 		unsigned int centerIndex = meshData.Vertices.size();
-		Vertex vertex{ XMFLOAT3(0, y, 0), XMFLOAT4(Colors::Azure) };
+		Vertex vertex{ XMFLOAT3(0, y, 0), normal, XMFLOAT4(Colors::Azure) };
 		meshData.Vertices.push_back(vertex);
 
 		// Lid indexes
@@ -118,6 +126,9 @@ MeshData GeometryGenerator::CreateCylinder(float rBottom, float rTop, float heig
 			meshData.Indexes.push_back(startIndex + i + k);
 			meshData.Indexes.push_back(startIndex + i + 1 - k);
 		}
+		color = XMFLOAT4(Colors::OrangeRed);
+		r = rTop;
+		normal.y = 1;
 	}
 
 	return meshData;
@@ -132,7 +143,7 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 
 	Vertex topVertex{}; // North pole
 	topVertex.position = XMFLOAT3(0.0f, radius, 0.0f);
-	XMStoreFloat4(&topVertex.color, colorTop);
+	DirectX::XMStoreFloat4(&topVertex.color, colorTop);
 	meshData.Vertices.push_back(topVertex);
 
 	const float phiStep = XM_PI / stackCount,
@@ -150,17 +161,17 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 				y = radius * cosf(phi),
 				z = radius * sinf(phi) * sinf(theta);
 
-			Vertex vertex{
-				XMFLOAT3(x, y, z),
-				(j % 2 == 0) ? XMFLOAT4(Colors::Azure) : XMFLOAT4(Colors::RoyalBlue) // Color
-			};
+			Vertex vertex{};
+			vertex.position = XMFLOAT3(x, y, z);
+			DirectX::XMStoreFloat3(&vertex.normal, XMVector3Normalize(XMLoadFloat3(&vertex.position)));
+			vertex.color = (j % 2 == 0) ? XMFLOAT4(Colors::Azure) : XMFLOAT4(Colors::RoyalBlue); // Color
 			meshData.Vertices.push_back(vertex);
 		}
 	}
 
 	Vertex bottomVertex{ }; // South pole
 	bottomVertex.position = XMFLOAT3(0.0f, -radius, 0.0f);
-	XMStoreFloat4(&bottomVertex.color, colorBottom);
+	DirectX::XMStoreFloat4(&bottomVertex.color, colorBottom);
 	meshData.Vertices.push_back(bottomVertex);
 
 	for (auto& vertex : meshData.Vertices)
@@ -168,7 +179,7 @@ MeshData GeometryGenerator::CreateSphere(float radius, unsigned int sliceCount, 
 		float t = (vertex.position.y + radius) / (2 * radius);
 		//XMVECTOR color = colorBottom + (colorTop - colorBottom) * t;
 		XMVECTOR color = XMVectorLerp(colorBottom, colorTop, t);
-		XMStoreFloat4(&vertex.color, color);
+		DirectX::XMStoreFloat4(&vertex.color, color);
 		vertex.color.w = 1;
 	}
 
@@ -295,6 +306,9 @@ MeshData GeometryGenerator::CreateIcosphere(float radius, unsigned int numSubdiv
 
 	for (auto& vertex : meshData.Vertices)
 	{
+		// The sphere normal is its own position 
+		XMStoreFloat3(&vertex.normal, XMVector3Normalize(XMLoadFloat3(&vertex.position)));
+
 		float t = (vertex.position.y + radius) / (2 * radius);
 		//XMVECTOR color = colorBottom + (colorTop - colorBottom) * t;
 		XMVECTOR color = XMVectorLerp(colorBottom, colorTop, t);
@@ -316,10 +330,10 @@ MeshData GeometryGenerator::CreateGrid()
 
 	auto AddLineAsRect = [&](float cx, float cz, float halfWidth, float halfDepth)
 		{
-			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz + halfDepth }, color }); // Top left
-			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz + halfDepth }, color }); // Top right
-			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz - halfDepth }, color }); // Back left
-			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz - halfDepth }, color }); // Back right
+			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz + halfDepth }, {0, 1, 0}, color }); // Top left
+			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz + halfDepth }, {0, 1, 0}, color }); // Top right
+			meshData.Vertices.push_back({ { cx - halfWidth, 0, cz - halfDepth }, {0, 1, 0}, color }); // Back left
+			meshData.Vertices.push_back({ { cx + halfWidth, 0, cz - halfDepth }, {0, 1, 0}, color }); // Back right
 
 			meshData.Indexes.push_back(index + 0);
 			meshData.Indexes.push_back(index + 1);

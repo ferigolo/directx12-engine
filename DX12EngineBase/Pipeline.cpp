@@ -46,14 +46,14 @@ bool Pipeline::CreatePipelineState(ID3D12Device* device)
 	ComPtr<ID3DBlob> vertexShader, pixelShader, errorBlob;
 
 	// Compiles vertexShader from file
-	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &errorBlob)))
+	if (FAILED(D3DCompileFromFile(L"./VertexShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &vertexShader, &errorBlob)))
 	{
 		if (errorBlob) OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 		return false;
 	}
 
 	// Compiles pixelShader from file
-	if (FAILED(D3DCompileFromFile(L"C:/Users/ferig/source/repos/DX12EngineBase/Shaders.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &errorBlob)))
+	if (FAILED(D3DCompileFromFile(L"./PixelShader.hlsl", nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &pixelShader, &errorBlob)))
 	{
 		if (errorBlob) OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 		return false;
